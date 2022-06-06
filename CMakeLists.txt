@@ -1,0 +1,13 @@
+cmake_minimum_required(VERSION 3.14.0)
+project(UseAiForWinML VERSION 0.1.0)
+
+set(CMAKE_CXX_STANDARD 17)
+find_package(NumCpp CONFIG REQUIRED)
+find_package(OpenCV CONFIG REQUIRED)
+include_directories(D:/Lib/vcpkg/installed/x64-windows/includ D:/Code/cpp/aimodle/onnxruntime/include)
+add_executable(UseAiForWinML main.cpp cnocr.h cnocr.cpp modle.h modle.cpp)
+target_link_directories(UseAiForWinML PUBLIC D:\\Code\\cpp\\aimodle\\onnxruntime\\lib)
+target_link_libraries(UseAiForWinML PRIVATE NumCpp::NumCpp ${OpenCV_LIBS} onnxruntime)
+set(CPACK_PROJECT_NAME ${PROJECT_NAME})
+set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
+include(CPack)
