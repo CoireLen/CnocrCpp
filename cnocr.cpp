@@ -91,7 +91,6 @@ vector<wstring> cnocr::ocr(string path){
 }
 vector<nc::NdArray<uint8_t>> cnocr::line_split(nc::NdArray<uint8_t> img){
     vector<nc::NdArray<uint8_t>> list;
-    list.push_back(img);
     auto imgcol=img.column(0).shape().size();
     auto imgrow=img.row(0).shape().size();
     auto bij=img.row(0);
@@ -156,7 +155,6 @@ vector<wstring> cnocr::ocr_for_single_lines(vector<nc::NdArray<uint8_t>> imgs){
         //调用模型
         long long input_height=imgresize.size[0];
         long long input_width=imgresize.size[1];
-        
         //run_ort_trt(input_width,input_height*input_width,imgresize.data);
         vector<void *>ret_data=modle.run(input_width,input_height*input_width,imgresize.data);
         //img.transpose(2,0,1); 将数据转换
