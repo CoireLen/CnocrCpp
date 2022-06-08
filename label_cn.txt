@@ -6640,34 +6640,34 @@ $
 盤
 サ
 マ
-<unused1>
-<unused2>
-<unused3>
-<unused4>
-<unused5>
-<unused6>
-<unused7>
-<unused8>
-<unused9>
-<unused10>
-<unused11>
-<unused12>
-<unused13>
-<unused14>
-<unused15>
-<unused16>
-<unused17>
-<unused18>
-<unused19>
-<unused20>
-<unused21>
-<unused22>
-<unused23>
-<unused24>
-<unused25>
-<unused26>
-<unused27>
-<unused28>
-<unused29>
-<unused30>
-<space>
+ <unused1>
+ <unused2>
+ <unused3>
+ <unused4>
+ <unused5>
+ <unused6>
+ <unused7>
+ <unused8>
+ <unused9>
+ <unused10>
+ <unused11>
+ <unused12>
+ <unused13>
+ <unused14>
+ <unused15>
+ <unused16>
+ <unused17>
+ <unused18>
+ <unused19>
+ <unused20>
+ <unused21>
+ <unused22>
+ <unused23>
+ <unused24>
+ <unused25>
+ <unused26>
+ <unused27>
+ <unused28>
+ <unused29>
+ <unused30>
+ <space>

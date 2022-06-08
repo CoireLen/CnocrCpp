@@ -40,7 +40,7 @@ private:
     const OrtApi& api=Ort::GetApi();
     OrtTensorRTProviderOptionsV2* tensorrt_option;
     Ort::SessionOptions session_options;
-    const wchar_t* model_path=L"D:\\Code\\cpp\\aimodle\\cnocr136fc.onnx";
+    const wchar_t* model_path=L"cnocr136fc.onnx";
     Ort::Session *session;
     Ort::AllocatorWithDefaultOptions allocator;
     size_t num_input_nodes;

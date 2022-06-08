@@ -18,7 +18,7 @@ private:
     vector<wstring> ocr_for_single_lines(vector<nc::NdArray<uint8_t>>);
     wstring ctc_best(nc::NdArray<uint32_t>);
     onnxmodle modle;
-    wchar_t * ctc_path=L"D:\\Code\\cpp\\aimodle\\label_cn.txt";
+    wchar_t * ctc_path=L"label_cn.txt";
     vector<wchar_t> ctc_data;
     /* data */
 public:
