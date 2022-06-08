@@ -24,6 +24,7 @@ private:
 public:
     cnocr(/* args */);
     vector<wstring> ocr(string path);
+    vector<wstring> ocr(cv::Mat img);
     ~cnocr();
 };
 

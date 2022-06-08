@@ -89,6 +89,31 @@ vector<wstring> cnocr::ocr(string path){
     res=ocr_for_single_lines(imgs);
     return res;
 }
+vector<wstring> cnocr::ocr(cv::Mat inimg){
+    auto img=toNdArray(inimg);
+    vector<wstring> res;
+    auto imgcol=img.column(0).shape().size();
+    auto imgrow=img.row(0).shape().size();
+    if (min(imgrow,imgcol) < 2){
+        return res;
+    }
+    cout<<"img(col,row):"<<imgcol <<","<<imgrow<<endl;
+    if (nc::mean(img)[0] < 145) // 把黑底白字的图片对调为白底黑字
+    {
+        //img = 255 - img;
+        auto a=nc::empty<unsigned char>(imgcol, imgrow);
+        for (int i=0;i<imgcol*imgrow;i++)
+        {
+            *(a.data()+i)=(uchar)255;
+        }
+        //nc::NdArray<nc::uint8>(imgcol,imgrow) i=255;
+        img =nc::add(a,-img);
+    }
+    cout<<"Mean:"<<nc::mean(img)[0]<<endl;
+    auto imgs=line_split(img);
+    res=ocr_for_single_lines(imgs);
+    return res;
+}
 vector<nc::NdArray<uint8_t>> cnocr::line_split(nc::NdArray<uint8_t> img){
     vector<nc::NdArray<uint8_t>> list;
     auto imgcol=img.column(0).shape().size();
