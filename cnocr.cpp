@@ -3,11 +3,11 @@
 #include <locale>
 cnocr::cnocr(/* args */)
 {
-    locale lc("zh_CN.UTF-8");
-    locale::global(lc);
+    std::locale lc("zh_CN.UTF-8");
+    std::locale::global(lc);
     //载入中文字符
     wchar_t buffer[100];
-    wifstream ctc_char(ctc_path);
+    std::wifstream ctc_char(ctc_path);
     while (!ctc_char.eof() )
     {
         ctc_char.getline(buffer,100);
@@ -26,11 +26,11 @@ nc::NdArray<uint8_t> cnocr::toNdArray(cv::Mat imgdata){
     }
     return img;
 }
-nc::NdArray<uint8_t> cnocr::read_img(string path){
+nc::NdArray<uint8_t> cnocr::read_img(std::string path){
     auto imgdata=cv::imread(path,cv::IMREAD_GRAYSCALE);
-    auto img=toNdArray(imgdata);
-    cout <<"Imgndarray:"<<img.shape()<<endl;
-    cout <<"Img 17_27:"<<int(img(17,27))<<endl;
+    nc::NdArray<uint8_t> img=toNdArray(imgdata);
+    std::cout <<"Imgndarray:"<<img.shape()<<std::endl;
+    std::cout <<"Img 17_27:"<<int(img(17,27))<<std::endl;
     return img;
 }
 cv::Mat cnocr::toMat(nc::NdArray<uint8_t> img){
@@ -64,15 +64,15 @@ void cnocr::show_img(nc::NdArray<uint8_t> img){
     cv::imshow("img",imgdata);
     cv::waitKey();
 }
-vector<wstring> cnocr::ocr(string path){
+std::vector<std::wstring> cnocr::ocr(std::string path){
     auto img =read_img(path);
-    vector<wstring> res;
+    std::vector<std::wstring> res;
     auto imgcol=img.column(0).shape().size();
     auto imgrow=img.row(0).shape().size();
-    if (min(imgrow,imgcol) < 2){
+    if (std::min(imgrow,imgcol) < 2){
         return res;
     }
-    cout<<"img(col,row):"<<imgcol <<","<<imgrow<<endl;
+    std::cout<<"img(col,row):"<<imgcol <<","<<imgrow<<std::endl;
     if (nc::mean(img)[0] < 145) // 把黑底白字的图片对调为白底黑字
     {
         //img = 255 - img;
@@ -84,20 +84,21 @@ vector<wstring> cnocr::ocr(string path){
         //nc::NdArray<nc::uint8>(imgcol,imgrow) i=255;
         img =nc::add(a,-img);
     }
-    cout<<"Mean:"<<nc::mean(img)[0]<<endl;
+    std::cout<<"Mean:"<<nc::mean(img)[0]<<std::endl;
     auto imgs=line_split(img);
     res=ocr_for_single_lines(imgs);
     return res;
 }
-vector<wstring> cnocr::ocr(cv::Mat inimg){
-    auto img=toNdArray(inimg);
-    vector<wstring> res;
+std::vector<std::wstring> cnocr::ocr(cv::Mat inimg){
+    cv::Mat outimg;
+    cv::cvtColor(inimg,outimg,cv::COLOR_RGB2GRAY);
+    auto img=toNdArray(outimg);
+    std::vector<std::wstring> res;
     auto imgcol=img.column(0).shape().size();
     auto imgrow=img.row(0).shape().size();
-    if (min(imgrow,imgcol) < 2){
+    if (std::min(imgrow,imgcol) < 2){
         return res;
     }
-    cout<<"img(col,row):"<<imgcol <<","<<imgrow<<endl;
     if (nc::mean(img)[0] < 145) // 把黑底白字的图片对调为白底黑字
     {
         //img = 255 - img;
@@ -109,13 +110,12 @@ vector<wstring> cnocr::ocr(cv::Mat inimg){
         //nc::NdArray<nc::uint8>(imgcol,imgrow) i=255;
         img =nc::add(a,-img);
     }
-    cout<<"Mean:"<<nc::mean(img)[0]<<endl;
     auto imgs=line_split(img);
     res=ocr_for_single_lines(imgs);
     return res;
 }
-vector<nc::NdArray<uint8_t>> cnocr::line_split(nc::NdArray<uint8_t> img){
-    vector<nc::NdArray<uint8_t>> list;
+std::vector<nc::NdArray<uint8_t>> cnocr::line_split(nc::NdArray<uint8_t> img){
+    std::vector<nc::NdArray<uint8_t>> list;
     auto imgcol=img.column(0).shape().size();
     auto imgrow=img.row(0).shape().size();
     auto bij=img.row(0);
@@ -160,17 +160,17 @@ vector<nc::NdArray<uint8_t>> cnocr::line_split(nc::NdArray<uint8_t> img){
     }
     return list;
 }
-vector<wstring> cnocr::ocr_for_single_lines(vector<nc::NdArray<uint8_t>> imgs){
-    vector<wstring>res;
+std::vector<std::wstring> cnocr::ocr_for_single_lines(std::vector<nc::NdArray<uint8_t>> imgs){
+    std::vector<std::wstring>res;
     if (imgs.size()==0){
         return res;
     }
-    cout<<"have lines x for ocr:"<<imgs.size()<<endl;
+    std::cout<<"have lines x for ocr:"<<imgs.size()<<std::endl;
     //res = self.rec_model.recognize(img_list, batch_size=batch_size)
     for (auto img:imgs){
         auto imgcol=img.column(0).shape().size();
         auto imgrow=img.row(0).shape().size();
-        cout <<"imgSize:"<<imgcol<<","<<imgrow<<endl;
+        std::cout <<"imgSize:"<<imgcol<<","<<imgrow<<std::endl;
         //等比例放图像至高度32
         auto imgmat=toMat(img);
         float ratio=imgcol/32.0;
@@ -181,7 +181,7 @@ vector<wstring> cnocr::ocr_for_single_lines(vector<nc::NdArray<uint8_t>> imgs){
         long long input_height=imgresize.size[0];
         long long input_width=imgresize.size[1];
         //run_ort_trt(input_width,input_height*input_width,imgresize.data);
-        vector<void *>ret_data=modle.run(input_width,input_height*input_width,imgresize.data);
+        std::vector<void *>ret_data=modle.run(input_width,input_height*input_width,imgresize.data);
         //img.transpose(2,0,1); 将数据转换
         auto ncdata=nc::empty<double>(*(int64_t*)ret_data[0],6674);
         for (size_t i=0;i<*(int64_t*)ret_data[0]*6674;i++){
@@ -199,9 +199,20 @@ vector<wstring> cnocr::ocr_for_single_lines(vector<nc::NdArray<uint8_t>> imgs){
     }
     return res;
 }
-wstring cnocr::ctc_best(nc::NdArray<uint32_t> data){
-    wstring res;
-    for (auto i:data){
+std::wstring cnocr::ctc_best(nc::NdArray<uint32_t> data){
+    std::wstring res;
+    std::vector<uint32_t> vui;//消除重复的
+    for (auto i :data){
+        if (vui.size()!=0){
+            if (vui[vui.size()-1]!=i){
+                vui.push_back(i);
+            }
+        }
+        else{
+            vui.push_back(i);
+        }
+    }
+    for (auto i:vui){
         if (i<6673){
             res.push_back(ctc_data[i]);
         }
