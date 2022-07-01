@@ -14,119 +14,55 @@ cnocr::cnocr(/* args */)
         ctc_data.push_back(buffer[0]);
     }
 }
-nc::NdArray<uint8_t> cnocr::toNdArray(cv::Mat imgdata){
-    unsigned int imgwight=imgdata.size[0];
-    unsigned int imghight=imgdata.size[1];
-    auto img= nc::zeros<unsigned char>(imgwight,imghight);
-    auto pimg=img.data();
-    auto pimgdata=imgdata.data;
-    unsigned int i_max=imgwight*imghight;
-    for (int i=0;i<i_max;i++){
-        *(pimg+i)=*(pimgdata+i);
-    }
-    return img;
-}
-nc::NdArray<uint8_t> cnocr::read_img(std::string path){
-    auto imgdata=cv::imread(path,cv::IMREAD_GRAYSCALE);
-    nc::NdArray<uint8_t> img=toNdArray(imgdata);
-    std::cout <<"Imgndarray:"<<img.shape()<<std::endl;
-    std::cout <<"Img 17_27:"<<int(img(17,27))<<std::endl;
-    return img;
-}
-cv::Mat cnocr::toMat(nc::NdArray<uint8_t> img){
-    auto imgcol=img.column(0).shape().size();
-    auto imgrow=img.row(0).shape().size();
-    using namespace cv;
-    Mat imgdata(imgcol,imgrow,CV_8UC1);
-    unsigned int i_max=imgcol*imgrow;
-    auto pimg=imgdata.data;
-    auto pimgdata=img.data();
-    for (int i=0;i<i_max;i++){
-        *(pimg+i)=*(pimgdata+i);
-    }
-    return imgdata;
-}
-cv::Mat cnocr::toMat(nc::NdArray<float> img){
-    auto imgcol=img.column(0).shape().size();
-    auto imgrow=img.row(0).shape().size();
-    using namespace cv;
-    Mat imgdata(imgcol,imgrow,CV_8UC1);
-    unsigned int i_max=imgcol*imgrow;
-    auto pimg=imgdata.data;
-    auto pimgdata=img.data();
-    for (int i=0;i<i_max;i++){
-        *(pimg+i)=(int8_t)*(pimgdata+i)*255.0;
-    }
-    return imgdata;
-}
-void cnocr::show_img(nc::NdArray<uint8_t> img){
-    auto imgdata=toMat(img);
-    cv::imshow("img",imgdata);
-    cv::waitKey();
-}
+
 std::vector<std::wstring> cnocr::ocr(std::string path){
-    auto img =read_img(path);
+    auto inimg =cv::imread(path,cv::IMREAD_GRAYSCALE);
+    cv::Mat outimg=inimg;
     std::vector<std::wstring> res;
-    auto imgcol=img.column(0).shape().size();
-    auto imgrow=img.row(0).shape().size();
+    auto imgcol=outimg.cols;
+    auto imgrow=outimg.rows;
     if (std::min(imgrow,imgcol) < 2){
         return res;
     }
-    std::cout<<"img(col,row):"<<imgcol <<","<<imgrow<<std::endl;
-    if (nc::mean(img)[0] < 145) // 把黑底白字的图片对调为白底黑字
+    if (cv::sum(outimg.col(0))[0] < 145) // 把黑底白字的图片对调为白底黑字
     {
-        //img = 255 - img;
-        auto a=nc::empty<unsigned char>(imgcol, imgrow);
-        for (int i=0;i<imgcol*imgrow;i++)
-        {
-            *(a.data()+i)=(uchar)255;
-        }
-        //nc::NdArray<nc::uint8>(imgcol,imgrow) i=255;
-        img =nc::add(a,-img);
+        outimg=255-outimg;
     }
-    std::cout<<"Mean:"<<nc::mean(img)[0]<<std::endl;
-    auto imgs=line_split(img);
+    auto imgs=line_split(outimg);
     res=ocr_for_single_lines(imgs);
     return res;
 }
-std::vector<std::wstring> cnocr::ocr(cv::Mat inimg){
+std::vector<std::wstring> cnocr::ocr(cv::Mat& inimg){
     cv::Mat outimg;
     cv::cvtColor(inimg,outimg,cv::COLOR_RGB2GRAY);
-    auto img=toNdArray(outimg);
     std::vector<std::wstring> res;
-    auto imgcol=img.column(0).shape().size();
-    auto imgrow=img.row(0).shape().size();
+    auto imgcol=outimg.cols;
+    auto imgrow=outimg.rows;
     if (std::min(imgrow,imgcol) < 2){
         return res;
     }
-    if (nc::mean(img)[0] < 145) // 把黑底白字的图片对调为白底黑字
+    if (cv::sum(outimg.col(0))[0] < 145) // 把黑底白字的图片对调为白底黑字
     {
-        //img = 255 - img;
-        auto a=nc::empty<unsigned char>(imgcol, imgrow);
-        for (int i=0;i<imgcol*imgrow;i++)
-        {
-            *(a.data()+i)=(uchar)255;
-        }
-        //nc::NdArray<nc::uint8>(imgcol,imgrow) i=255;
-        img =nc::add(a,-img);
+        outimg=255-outimg;
     }
-    auto imgs=line_split(img);
+    auto imgs=line_split(outimg);
     res=ocr_for_single_lines(imgs);
     return res;
 }
-std::vector<nc::NdArray<uint8_t>> cnocr::line_split(nc::NdArray<uint8_t> img){
-    std::vector<nc::NdArray<uint8_t>> list;
-    auto imgcol=img.column(0).shape().size();
-    auto imgrow=img.row(0).shape().size();
-    auto bij=img.row(0);
+
+std::vector<cv::Mat> cnocr::line_split(cv::Mat& inimg){
+    std::vector<cv::Mat> list;
+    auto imgcol=inimg.cols;
+    auto imgrow=inimg.rows;
+    auto bij=inimg.row(0);
     for (int i=0;i<imgrow;i++){
-        *(bij.data()+i)=255;
+        *(bij.data+i)=255;
     }
     int lineforchar=0;
     int lineforcharstart=0;
-    for (int i=0;i<imgcol;i++){
-        auto res=nc::add(bij,-img.row(i));
-        if (res.max()(0,0)>100){
+    for (int i=0;i<imgrow;i++){
+        cv::Mat res=bij-inimg.row(i);
+        if (*std::max_element(res.begin<uchar>(),res.end<uchar>())>100){
             if (lineforchar+1==i){
                 lineforchar++;
             }
@@ -140,7 +76,7 @@ std::vector<nc::NdArray<uint8_t>> cnocr::line_split(nc::NdArray<uint8_t> img){
                     if (end<imgcol-1){
                         end+=1;
                     }
-                    list.push_back(img(nc::Slice(start, end), nc::Slice(0, imgrow)));
+                    list.push_back(inimg(cv::Rect(0,start,inimg.cols,end-start)));
                 }
                 lineforcharstart=i;
                 lineforchar=i;
@@ -156,11 +92,34 @@ std::vector<nc::NdArray<uint8_t>> cnocr::line_split(nc::NdArray<uint8_t> img){
         if (end<imgcol-1){
             end+=1;
         }
-        list.push_back(img(nc::Slice(start, end), nc::Slice(0, imgrow)));
+        list.push_back(inimg(cv::Rect(0,start,inimg.cols,end-start)));
     }
     return list;
 }
-std::vector<std::wstring> cnocr::ocr_for_single_lines(std::vector<nc::NdArray<uint8_t>> imgs){
+void softmax(cv::Mat &input){
+    for (int i=0;i<input.rows;i++){
+        auto ncdata=input.row(i);
+        double t=(*std::max_element(ncdata.begin<float>(),ncdata.end<float>()));
+        cv::exp(ncdata-t,ncdata);
+        double t1=cv::sum(ncdata)[0];
+        ncdata=ncdata/t1;
+    }
+}
+
+template<class ForwardIterator>
+inline size_t argmax(ForwardIterator first, ForwardIterator last)
+{
+    return std::distance(first, std::max_element(first, last));
+}
+std::vector<uint16_t> vargmax(cv::Mat input) {
+    std::vector<uint16_t> res;
+    for (int i=0;i<input.rows;i++){
+        auto ncdata=input.row(i);
+        res.push_back(argmax(ncdata.begin<float>(),ncdata.end<float>()));
+    }
+    return res;
+}
+std::vector<std::wstring> cnocr::ocr_for_single_lines(std::vector<cv::Mat>& imgs){
     std::vector<std::wstring>res;
     if (imgs.size()==0){
         return res;
@@ -168,13 +127,13 @@ std::vector<std::wstring> cnocr::ocr_for_single_lines(std::vector<nc::NdArray<ui
     std::cout<<"have lines x for ocr:"<<imgs.size()<<std::endl;
     //res = self.rec_model.recognize(img_list, batch_size=batch_size)
     for (auto img:imgs){
-        auto imgcol=img.column(0).shape().size();
-        auto imgrow=img.row(0).shape().size();
+        auto imgcol=img.cols;
+        auto imgrow=img.rows;
         std::cout <<"imgSize:"<<imgcol<<","<<imgrow<<std::endl;
         //等比例放图像至高度32
-        auto imgmat=toMat(img);
-        float ratio=imgcol/32.0;
-        cv::Size sz((int)(imgrow/ratio),32);
+        auto imgmat=img;
+        float ratio=imgrow/32.0;
+        cv::Size sz((int)(imgcol/ratio),32);
         cv::Mat imgresize(sz,CV_8UC1);
         cv::resize(imgmat,imgresize,sz);
         //调用模型
@@ -183,33 +142,36 @@ std::vector<std::wstring> cnocr::ocr_for_single_lines(std::vector<nc::NdArray<ui
         //run_ort_trt(input_width,input_height*input_width,imgresize.data);
         std::vector<void *>ret_data=modle.run(input_width,input_height*input_width,imgresize.data);
         //img.transpose(2,0,1); 将数据转换
-        auto ncdata=nc::empty<double>(*(int64_t*)ret_data[0],6674);
-        for (size_t i=0;i<*(int64_t*)ret_data[0]*6674;i++){
-                *(ncdata.data()+i)=*((float*)ret_data[1]+i);
-        }
+        ////auto ncdata=nc::empty<double>(*(int64_t*)ret_data[0],6674);
+        ////for (size_t i=0;i<*(int64_t*)ret_data[0]*6674;i++){
+        ////        *(ncdata.data()+i)=*((float*)ret_data[1]+i);
+        ////}
+        auto ncdata=cv::Mat(*(int64_t*)ret_data[0],6674,CV_32FC1,(float*)ret_data[1]);
+        softmax(ncdata);
         //probs = F.softmax(logits.permute(0, 2, 1), dim=1)
-        auto probs=nc::special::softmax(ncdata,nc::Axis::COL);
+        //auto probs=nc::special::softmax(ncdata,nc::Axis::COL);
         //best_path = torch.argmax(probs, dim=1)  # [N, T]
-        auto best_path=nc::argmax(probs,nc::Axis::COL);
-        //best_path=nc::add(mask,-best_path);
-        //length_mask = gen_length_mask(input_lengths, probs.shape).to(device=probs.device)
-        //argmax 最大的值
+        //auto best_path=nc::argmax(probs,nc::Axis::COL);
+        std::vector<uint16_t> best_path=vargmax(ncdata);
+        //cv::reduce(ncdata, best_path, 0, cv::REDUCE_AVG);\
+
         res.push_back(ctc_best(best_path));
         
     }
     return res;
 }
-std::wstring cnocr::ctc_best(nc::NdArray<uint32_t> data){
+std::wstring cnocr::ctc_best(std::vector<uint16_t> data){
     std::wstring res;
     std::vector<uint32_t> vui;//消除重复的
-    for (auto i :data){
+    std::cout<<data.size()<<std::endl;
+    for (auto i=data.begin();i!=data.end();i++){
         if (vui.size()!=0){
-            if (vui[vui.size()-1]!=i){
-                vui.push_back(i);
+            if (vui[vui.size()-1]!=(uint32_t)*i){
+                vui.push_back((uint32_t)*i);
             }
         }
         else{
-            vui.push_back(i);
+            vui.push_back((uint32_t)*i);
         }
     }
     for (auto i:vui){
