@@ -9,6 +9,7 @@ onnxmodle::onnxmodle(/* args */)
   this->api.CreateTensorRTProviderOptions(&tensorrt_option);
   std::unique_ptr<OrtTensorRTProviderOptionsV2,decltype(api.ReleaseTensorRTProviderOptions)>  rel_trt_options(tensorrt_option,api.ReleaseTensorRTProviderOptions);
   this->api.SessionOptionsAppendExecutionProvider_TensorRT_V2(static_cast<OrtSessionOptions*>(session_options), rel_trt_options.get());
+  //此处应该检测modle_path文件存在与否
   Ort::Session *session=new Ort::Session(this->env, this->model_path, this->session_options);
   this->session=session;
   this->num_input_nodes = this->session->GetInputCount();

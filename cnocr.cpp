@@ -14,11 +14,13 @@ cnocr::cnocr(/* args */)
         ctc_data.push_back(buffer[0]);
     }
 }
-
-std::vector<std::wstring> cnocr::ocr(std::string path){
+/// @brief 读入图片路径返回图片中的字符串
+/// @param path 图片文件路径
+/// @return 识别到的中文字符串列表
+std::vector<std::pair<std::wstring,float>> cnocr::ocr(std::string path){
     auto inimg =cv::imread(path,cv::IMREAD_GRAYSCALE);
     cv::Mat outimg=inimg;
-    std::vector<std::wstring> res;
+    std::vector<std::pair<std::wstring,float>> res;
     auto imgcol=outimg.cols;
     auto imgrow=outimg.rows;
     if (std::min(imgrow,imgcol) < 2){
@@ -32,10 +34,10 @@ std::vector<std::wstring> cnocr::ocr(std::string path){
     res=ocr_for_single_lines(imgs);
     return res;
 }
-std::vector<std::wstring> cnocr::ocr(cv::Mat& inimg){
+std::vector<std::pair<std::wstring,float>> cnocr::ocr(cv::Mat& inimg){
     cv::Mat outimg;
     cv::cvtColor(inimg,outimg,cv::COLOR_RGB2GRAY);
-    std::vector<std::wstring> res;
+    std::vector<std::pair<std::wstring,float>> res;
     auto imgcol=outimg.cols;
     auto imgrow=outimg.rows;
     if (std::min(imgrow,imgcol) < 2){
@@ -49,7 +51,9 @@ std::vector<std::wstring> cnocr::ocr(cv::Mat& inimg){
     res=ocr_for_single_lines(imgs);
     return res;
 }
-
+/// @brief 读取Mat格式的图片 横向切分成 单列有文字的 图片列表
+/// @param inimg 
+/// @return 单列有文字的 图片列表
 std::vector<cv::Mat> cnocr::line_split(cv::Mat& inimg){
     std::vector<cv::Mat> list;
     auto imgcol=inimg.cols;
@@ -96,6 +100,8 @@ std::vector<cv::Mat> cnocr::line_split(cv::Mat& inimg){
     }
     return list;
 }
+/// @brief 
+/// @param input 
 void softmax(cv::Mat &input){
     for (int i=0;i<input.rows;i++){
         auto ncdata=input.row(i);
@@ -119,8 +125,8 @@ std::vector<uint16_t> vargmax(cv::Mat input) {
     }
     return res;
 }
-std::vector<std::wstring> cnocr::ocr_for_single_lines(std::vector<cv::Mat>& imgs){
-    std::vector<std::wstring>res;
+std::vector<std::pair<std::wstring,float>> cnocr::ocr_for_single_lines(std::vector<cv::Mat>& imgs){
+    std::vector<std::pair<std::wstring,float>>res;
     if (imgs.size()==0){
         return res;
     }
@@ -139,31 +145,25 @@ std::vector<std::wstring> cnocr::ocr_for_single_lines(std::vector<cv::Mat>& imgs
         //调用模型
         long long input_height=imgresize.size[0];
         long long input_width=imgresize.size[1];
-        //run_ort_trt(input_width,input_height*input_width,imgresize.data);
         std::vector<void *>ret_data=modle.run(input_width,input_height*input_width,imgresize.data);
-        //img.transpose(2,0,1); 将数据转换
-        ////auto ncdata=nc::empty<double>(*(int64_t*)ret_data[0],6674);
-        ////for (size_t i=0;i<*(int64_t*)ret_data[0]*6674;i++){
-        ////        *(ncdata.data()+i)=*((float*)ret_data[1]+i);
-        ////}
+
         auto ncdata=cv::Mat(*(int64_t*)ret_data[0],6674,CV_32FC1,(float*)ret_data[1]);
         softmax(ncdata);
-        //probs = F.softmax(logits.permute(0, 2, 1), dim=1)
-        //auto probs=nc::special::softmax(ncdata,nc::Axis::COL);
-        //best_path = torch.argmax(probs, dim=1)  # [N, T]
-        //auto best_path=nc::argmax(probs,nc::Axis::COL);
+        auto matdata=ncdata.clone();
         std::vector<uint16_t> best_path=vargmax(ncdata);
-        //cv::reduce(ncdata, best_path, 0, cv::REDUCE_AVG);\
-
-        res.push_back(ctc_best(best_path));
-        
+        //计算准确率
+        double minv,maxv;
+        cv::reduce(matdata,matdata,1,cv::REDUCE_MAX);
+        cv::reduce(matdata,matdata,0,cv::REDUCE_MIN);
+        float zql=matdata.at<float>(0,0);//准确率
+        //std::cout<<"Accuracy:"<<zql<< "<"<<matdata.cols<<","<<matdata.rows<<">"<<std::endl;
+        res.push_back(std::pair<std::wstring,float>(ctc_best(best_path),zql));
     }
     return res;
 }
 std::wstring cnocr::ctc_best(std::vector<uint16_t> data){
     std::wstring res;
     std::vector<uint32_t> vui;//消除重复的
-    std::cout<<data.size()<<std::endl;
     for (auto i=data.begin();i!=data.end();i++){
         if (vui.size()!=0){
             if (vui[vui.size()-1]!=(uint32_t)*i){

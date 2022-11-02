@@ -13,7 +13,7 @@ class cnocr
 {
 private:
     std::vector<cv::Mat> line_split(cv::Mat& inimg);
-    std::vector<std::wstring> ocr_for_single_lines(std::vector<cv::Mat>& inimgs);
+    std::vector<std::pair<std::wstring,float>> ocr_for_single_lines(std::vector<cv::Mat>& inimgs);
     std::wstring ctc_best(std::vector<uint16_t>);
     onnxmodle modle;
     wchar_t * ctc_path=L"label_cn.txt";
@@ -21,8 +21,8 @@ private:
     /* data */
 public:
     cnocr(/* args */);
-    std::vector<std::wstring> ocr(std::string path);
-    std::vector<std::wstring> ocr(cv::Mat& img);
+    std::vector<std::pair<std::wstring,float>> ocr(std::string path);
+    std::vector<std::pair<std::wstring,float>> ocr(cv::Mat& img);
     std::vector<std::wstring> ocrtable(cv::Mat img);
     ~cnocr();
 };

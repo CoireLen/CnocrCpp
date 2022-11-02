@@ -6,8 +6,7 @@ int main(){
 void run_cnocr(){
     cnocr ocr;
     int i=0;
-
-    for (auto line:ocr.ocr("D:/Dev/CPP/CnorcCpp/cnocr.png")){
-        std::wcout<<i++<<":"<<line<<std::endl;
+    for (auto line:ocr.ocr("D:/Dev/CPP/CnocrCpp/cnocr.png")){
+        std::wcout<<i++<<":"<<line.first<<","<<line.second<<std::endl;
     }
 }
