@@ -40,7 +40,6 @@ private:
     const OrtApi& api=Ort::GetApi();
     OrtTensorRTProviderOptionsV2* tensorrt_option;
     Ort::SessionOptions session_options;
-    const wchar_t* model_path=L"cnocr136fc.onnx";
     Ort::Session *session;
     Ort::AllocatorWithDefaultOptions allocator;
     size_t num_input_nodes;
@@ -48,7 +47,7 @@ private:
     std::vector<int64_t> input_node_dims;
 public:
   std::vector<void *> run(long long input_lengths,long long x_length,unsigned char * x);
-  onnxmodle(/* args */);
+  onnxmodle(wchar_t * modle_path);
   ~onnxmodle();
 };
 

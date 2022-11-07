@@ -4,9 +4,9 @@ int main(){
     run_cnocr();
 }
 void run_cnocr(){
-    cnocr ocr;
+    cnocr ocr(cnocr::USE_MODLE::en_number);
     int i=0;
-    for (auto line:ocr.ocr("D:/Dev/CPP/CnocrCpp/cnocr.png")){
+    for (auto line:ocr.ocr("D:/2.png")){
         std::wcout<<i++<<":"<<line.first<<","<<line.second<<std::endl;
     }
 }

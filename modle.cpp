@@ -1,7 +1,8 @@
 #include "modle.h"
 #include <iostream>
-onnxmodle::onnxmodle(/* args */)
+onnxmodle::onnxmodle(wchar_t * modle_path)
 {
+
   Ort::Env env(ORT_LOGGING_LEVEL_WARNING,"test");
   this->env=std::move(env);
   this->session_options.SetInterOpNumThreads(1);
@@ -10,7 +11,7 @@ onnxmodle::onnxmodle(/* args */)
   std::unique_ptr<OrtTensorRTProviderOptionsV2,decltype(api.ReleaseTensorRTProviderOptions)>  rel_trt_options(tensorrt_option,api.ReleaseTensorRTProviderOptions);
   this->api.SessionOptionsAppendExecutionProvider_TensorRT_V2(static_cast<OrtSessionOptions*>(session_options), rel_trt_options.get());
   //此处应该检测modle_path文件存在与否
-  Ort::Session *session=new Ort::Session(this->env, this->model_path, this->session_options);
+  Ort::Session *session=new Ort::Session(this->env, modle_path, this->session_options);
   this->session=session;
   this->num_input_nodes = this->session->GetInputCount();
   std::vector<const char*> input_node_names(this->num_input_nodes);
@@ -34,7 +35,6 @@ onnxmodle::onnxmodle(/* args */)
     for (size_t j = 0; j < input_node_dims.size(); j++)
       printf("Input %d : dim %zu=%jd\n", i, j, input_node_dims[j]);
   }
-
 }
 std::vector<void*> onnxmodle::run(long long input_length,long long x_length,unsigned char * x) {
   size_t input_tensor_size = 32*input_length;  // simplify ... using known dim values to calculate size

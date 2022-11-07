@@ -1,10 +1,25 @@
 #include "cnocr.h"
 #include <algorithm>
 #include <locale>
-cnocr::cnocr(/* args */)
+
+cnocr::cnocr(cnocr::USE_MODLE themodle)
 {
     std::locale lc("zh_CN.UTF-8");
     std::locale::global(lc);
+    this->use_modle=themodle;
+    switch (themodle)
+    {
+    case USE_MODLE::cnocr136fc:
+        this->ctc_path=L"dict/label_cn.txt";
+        this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(L"modle/cnocr136fc.onnx"));
+        break;
+    case USE_MODLE::en_number:
+        this->ctc_path=L"dict/en_dict.txt";
+        this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(L"modle/en_number_mobile_v2.0_rec_infer.onnx"));
+        break;
+    default:
+        break;
+    }
     //载入中文字符
     wchar_t buffer[100];
     std::wifstream ctc_char(ctc_path);
@@ -26,7 +41,7 @@ std::vector<std::pair<std::wstring,float>> cnocr::ocr(std::string path){
     if (std::min(imgrow,imgcol) < 2){
         return res;
     }
-    if (cv::sum(outimg.col(0))[0] < 145) // 把黑底白字的图片对调为白底黑字
+    if (cv::sum(outimg.col(0))[0]/outimg.rows < 145) // 把黑底白字的图片对调为白底黑字
     {
         outimg=255-outimg;
     }
@@ -145,14 +160,14 @@ std::vector<std::pair<std::wstring,float>> cnocr::ocr_for_single_lines(std::vect
         //调用模型
         long long input_height=imgresize.size[0];
         long long input_width=imgresize.size[1];
-        std::vector<void *>ret_data=modle.run(input_width,input_height*input_width,imgresize.data);
+
+        std::vector<void *>ret_data=this->modle->run(input_width,input_height*input_width,imgresize.data);
 
         auto ncdata=cv::Mat(*(int64_t*)ret_data[0],6674,CV_32FC1,(float*)ret_data[1]);
         softmax(ncdata);
         auto matdata=ncdata.clone();
         std::vector<uint16_t> best_path=vargmax(ncdata);
         //计算准确率
-        double minv,maxv;
         cv::reduce(matdata,matdata,1,cv::REDUCE_MAX);
         cv::reduce(matdata,matdata,0,cv::REDUCE_MIN);
         float zql=matdata.at<float>(0,0);//准确率
@@ -175,7 +190,7 @@ std::wstring cnocr::ctc_best(std::vector<uint16_t> data){
         }
     }
     for (auto i:vui){
-        if (i<6673){
+        if (i<ctc_data.size()){
             res.push_back(ctc_data[i]);
         }
     }
