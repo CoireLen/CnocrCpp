@@ -212,6 +212,7 @@ std::wstring cnocr::ctc_best(std::vector<uint16_t> data){
     }
     return res;
 }
+
 cnocr::~cnocr()
 {
 }
