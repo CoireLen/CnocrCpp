@@ -77,6 +77,49 @@ std::vector<void*> onnxmodle::run(long long input_length,long long x_length,unsi
   printf("Done!\n");
   return ret;
 }
+std::vector<void*> onnxmodle::run_en(long long input_length,long long x_length,unsigned char * x) {
+  size_t input_tensor_size = x_length ;  // simplify ... using known dim values to calculate size
+                                             // use OrtGetTensorShapeElementCount() to get official size!
+  std::vector<float> input_tensor_values(input_tensor_size);
+  std::vector<const char*> output_node_names;//输出节点名称
+  size_t outputcount=this->session->GetOutputCount();//获取输出节点数量
+  for (size_t i=0;i<outputcount;i++){
+    char * outputname=this->session->GetOutputName(i,this->allocator);
+    output_node_names.push_back(outputname);
+  }
+  // initialize input data with values in [0.0, 1.0]
+  // RGB RGB RGB 转 RRRR GGGGG BBBB
+  for (unsigned int i = 0; i < input_tensor_size; i++){
+    input_tensor_values[i] = *(x+i%(input_length*32))/255.0;//R
+  }
+    
+
+  // create input tensor object from data values
+  auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+  input_node_dims={1,3,32,input_length};
+  Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info, input_tensor_values.data(), input_tensor_size*3, input_node_dims.data(), 4);
+  assert(input_tensor.IsTensor());
+  std::vector<Ort::Value> input_tensor_data;
+  input_tensor_data.push_back(std::move(input_tensor));
+  // score model & input tensor, get back output tensor
+  auto output_tensors = this->session->Run(Ort::RunOptions{nullptr}, input_node_names.data(),input_tensor_data.data() , 1, output_node_names.data(), 1);
+
+  // Get pointer to output tensor float values
+  float*  output_lengths= output_tensors[0].GetTensorMutableData<float>();
+  //float * logits=output_tensors[1].GetTensorMutableData<float>();
+  // release buffers allocated by ORT alloctor
+  auto output_info=output_tensors[0].GetTensorTypeAndShapeInfo();
+  auto shape=output_info.GetShape();
+  std::cout<<"Shape: ";
+  for (auto i:shape){
+    std::cout<<i<<" ";
+  }
+  std::cout<<std::endl;
+  auto length=shape.at(1);
+  std::vector<void *> ret={(void *)length,(void*)output_lengths};
+  printf("Done!\n");
+  return ret;
+}
 onnxmodle::~onnxmodle()
 {
   delete this->session;

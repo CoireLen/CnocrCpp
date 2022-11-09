@@ -46,9 +46,10 @@ private:
     std::vector<const char*> input_node_names;
     std::vector<int64_t> input_node_dims;
 public:
-  std::vector<void *> run(long long input_lengths,long long x_length,unsigned char * x);
-  onnxmodle(wchar_t * modle_path);
-  ~onnxmodle();
+    std::vector<void *> run(long long input_lengths,long long x_length,unsigned char * x);
+    std::vector<void *> run_en(long long input_lengths,long long x_length,unsigned char * x);
+    onnxmodle(wchar_t * modle_path);
+    ~onnxmodle();
 };
 
 

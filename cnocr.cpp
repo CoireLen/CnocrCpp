@@ -1,7 +1,6 @@
 #include "cnocr.h"
 #include <algorithm>
 #include <locale>
-
 cnocr::cnocr(cnocr::USE_MODLE themodle)
 {
     std::locale lc("zh_CN.UTF-8");
@@ -16,6 +15,10 @@ cnocr::cnocr(cnocr::USE_MODLE themodle)
     case USE_MODLE::en_number:
         this->ctc_path=L"dict/en_dict.txt";
         this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(L"modle/en_number_mobile_v2.0_rec_infer.onnx"));
+        break;
+    case USE_MODLE::chinese_cht:
+        this->ctc_path=L"dict/chinese_cht_dict.txt";
+        this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(L"modle/chinese_cht_PP-OCRv3_rec_infer.onnx"));
         break;
     default:
         break;
@@ -155,16 +158,29 @@ std::vector<std::pair<std::wstring,float>> cnocr::ocr_for_single_lines(std::vect
         auto imgmat=img;
         float ratio=imgrow/32.0;
         cv::Size sz((int)(imgcol/ratio),32);
+
         cv::Mat imgresize(sz,CV_8UC1);
         cv::resize(imgmat,imgresize,sz);
         //调用模型
         long long input_height=imgresize.size[0];
         long long input_width=imgresize.size[1];
-
-        std::vector<void *>ret_data=this->modle->run(input_width,input_height*input_width,imgresize.data);
-
-        auto ncdata=cv::Mat(*(int64_t*)ret_data[0],6674,CV_32FC1,(float*)ret_data[1]);
-        softmax(ncdata);
+        cv::Mat ncdata;
+        std::vector<void *>ret_data;
+        switch (this->use_modle)
+        {
+        case USE_MODLE::cnocr136fc:
+            ret_data=this->modle->run(input_width,input_height*input_width,imgresize.data);
+            ncdata=cv::Mat(*(int64_t*)ret_data[0],6674,CV_32FC1,(float*)ret_data[1]);
+            softmax(ncdata);
+            break;
+        
+        case USE_MODLE::en_number:
+            ret_data=this->modle->run_en(input_width,input_height*input_width*3,imgresize.data);
+            int64_t size=(int64_t)ret_data[0];
+            ncdata=cv::Mat(size,97,CV_32FC1,(float*)ret_data[1]);
+            break;
+        }
+        
         auto matdata=ncdata.clone();
         std::vector<uint16_t> best_path=vargmax(ncdata);
         //计算准确率
