@@ -4,6 +4,7 @@
 - onnxruntime 自 https://github.com/microsoft/onnxruntime/releases 下载后 放入此文件夹或自行更改CMakeListsCMAK
 - 另 需求 vcpkg (opencv) 包
 ## 20221110
+opencv Mat 替换为Umat，性能得到了一点点提升
 onnxruntime 可以调用CUDA进行模型计算
 ## 20221109
 英 文 识 别 可 用，~~但 是 有  [*空格*] 很 多，~~并英文识别**准确率**不准。en_dict词典首行和末行加了空格。
@@ -50,7 +51,7 @@ void run_cnocr(){
 1:ONNX版本；2）从其他ocr引擎搬运过来的训练好的外部模型，ONNX化后用于 cnocr中。,0.721081
 
 2:The Rust Standard Library is the foundation of portable Rust software, a set of minimal and battle-tested shared abstractions for the,0.535793
-3:broader Rust ecosystem. It offers core types, like Vec<T> and Option<T>, library-defined operations on language primitives,,0.515892
+3:broader Rust ecosystem. It offers core types, like Vec<T> and Option<T>, library-defined operations on language primitives,,0.51892
 4:standard macros, I/O and multithreading, among many other things.,0.579248
 
 3.633044s wall, 2.890625s user + 1.890625s system = 4.781250s CPU (131.6%)

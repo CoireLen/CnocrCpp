@@ -37,7 +37,7 @@ cnocr::cnocr(cnocr::USE_MODLE themodle,USE_DEVICE device)
 /// @return 识别到的中文字符串列表
 std::vector<std::pair<std::wstring,float>> cnocr::ocr(std::string path){
     auto inimg =cv::imread(path,cv::IMREAD_GRAYSCALE);
-    cv::Mat outimg=inimg;
+    cv::UMat outimg=inimg.getUMat(cv::ACCESS_RW);
     std::vector<std::pair<std::wstring,float>> res;
     auto imgcol=outimg.cols;
     auto imgrow=outimg.rows;
@@ -46,14 +46,14 @@ std::vector<std::pair<std::wstring,float>> cnocr::ocr(std::string path){
     }
     if (cv::sum(outimg.col(0))[0]/outimg.rows < 145) // 把黑底白字的图片对调为白底黑字
     {
-        outimg=255-outimg;
+        cv::subtract(255,outimg,outimg);
     }
     auto imgs=line_split(outimg);
     res=ocr_for_single_lines(imgs);
     return res;
 }
-std::vector<std::pair<std::wstring,float>> cnocr::ocr(cv::Mat& inimg){
-    cv::Mat outimg;
+std::vector<std::pair<std::wstring,float>> cnocr::ocr(cv::UMat& inimg){
+    cv::UMat outimg;
     cv::cvtColor(inimg,outimg,cv::COLOR_RGB2GRAY);
     std::vector<std::pair<std::wstring,float>> res;
     auto imgcol=outimg.cols;
@@ -63,7 +63,7 @@ std::vector<std::pair<std::wstring,float>> cnocr::ocr(cv::Mat& inimg){
     }
     if (cv::sum(outimg.col(0))[0] < 145) // 把黑底白字的图片对调为白底黑字
     {
-        outimg=255-outimg;
+        cv::subtract(255,outimg,outimg);
     }
     auto imgs=line_split(outimg);
     res=ocr_for_single_lines(imgs);
@@ -72,18 +72,18 @@ std::vector<std::pair<std::wstring,float>> cnocr::ocr(cv::Mat& inimg){
 /// @brief 读取Mat格式的图片 横向切分成 单列有文字的 图片列表
 /// @param inimg 
 /// @return 单列有文字的 图片列表
-std::vector<cv::Mat> cnocr::line_split(cv::Mat& inimg){
-    std::vector<cv::Mat> list;
+std::vector<cv::UMat> cnocr::line_split(cv::UMat& inimg){
+    std::vector<cv::UMat> list;
     auto imgcol=inimg.cols;
     auto imgrow=inimg.rows;
-    auto bij=inimg.row(0);
+    auto bij=inimg.row(0).getMat(cv::ACCESS_RW);
     for (int i=0;i<imgrow;i++){
         *(bij.data+i)=255;
     }
     int lineforchar=0;
     int lineforcharstart=0;
     for (int i=0;i<imgrow;i++){
-        cv::Mat res=bij-inimg.row(i);
+        cv::Mat res=bij-inimg.row(i).getMat(cv::ACCESS_READ);
         if (*std::max_element(res.begin<uchar>(),res.end<uchar>())>100){
             if (lineforchar+1==i){
                 lineforchar++;
@@ -143,7 +143,7 @@ std::vector<uint16_t> vargmax(cv::Mat input) {
     }
     return res;
 }
-std::vector<std::pair<std::wstring,float>> cnocr::ocr_for_single_lines(std::vector<cv::Mat>& imgs){
+std::vector<std::pair<std::wstring,float>> cnocr::ocr_for_single_lines(std::vector<cv::UMat>& imgs){
     std::vector<std::pair<std::wstring,float>>res;
     if (imgs.size()==0){
         return res;
@@ -159,7 +159,7 @@ std::vector<std::pair<std::wstring,float>> cnocr::ocr_for_single_lines(std::vect
         float ratio=imgrow/32.0;
         cv::Size sz((int)(imgcol/ratio),32);
 
-        cv::Mat imgresize(sz,CV_8UC1);
+        cv::UMat imgresize(sz,CV_8UC1);
         cv::resize(imgmat,imgresize,sz);
         //调用模型
         long long input_height=imgresize.size[0];
@@ -169,13 +169,13 @@ std::vector<std::pair<std::wstring,float>> cnocr::ocr_for_single_lines(std::vect
         switch (this->use_modle)
         {
         case USE_MODLE::cnocr136fc:
-            ret_data=this->modle->run(input_width,input_height*input_width,imgresize.data);
+            ret_data=this->modle->run(input_width,input_height*input_width,imgresize.getMat(cv::ACCESS_READ).data);
             ncdata=cv::Mat(*(int64_t*)ret_data[0],6674,CV_32FC1,(float*)ret_data[1]);
             softmax(ncdata);
             break;
         
         case USE_MODLE::en_number:
-            ret_data=this->modle->run_en(input_width,input_height*input_width*3,imgresize.data);
+            ret_data=this->modle->run_en(input_width,input_height*input_width*3,imgresize.getMat(cv::ACCESS_READ).data);
             int64_t size=(int64_t)ret_data[0];
             ncdata=cv::Mat(size,97,CV_32FC1,(float*)ret_data[1]);
             break;

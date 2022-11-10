@@ -19,8 +19,8 @@ public:
         ,chinese_cht //繁体中文ocr识别模型
     };
 private:
-    std::vector<cv::Mat> line_split(cv::Mat& inimg);
-    std::vector<std::pair<std::wstring,float>> ocr_for_single_lines(std::vector<cv::Mat>& inimgs);
+    std::vector<cv::UMat> line_split(cv::UMat& inimg);
+    std::vector<std::pair<std::wstring,float>> ocr_for_single_lines(std::vector<cv::UMat>& inimgs);
     std::wstring ctc_best(std::vector<uint16_t>);
     std::unique_ptr<onnxmodle> modle;
     wchar_t * ctc_path;
@@ -30,8 +30,8 @@ private:
 public:
     cnocr(cnocr::USE_MODLE=USE_MODLE::cnocr136fc,USE_DEVICE device=USE_DEVICE::TensorRT);
     std::vector<std::pair<std::wstring,float>> ocr(std::string path);
-    std::vector<std::pair<std::wstring,float>> ocr(cv::Mat& img);
-    std::vector<std::wstring> ocrtable(cv::Mat img);
+    std::vector<std::pair<std::wstring,float>> ocr(cv::UMat& img);
+    std::vector<std::wstring> ocrtable(cv::UMat img);
     ~cnocr();
 
 };
