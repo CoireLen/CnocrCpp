@@ -1,7 +1,7 @@
 #include "cnocr.h"
 #include <algorithm>
 #include <locale>
-cnocr::cnocr(cnocr::USE_MODLE themodle)
+cnocr::cnocr(cnocr::USE_MODLE themodle,USE_DEVICE device)
 {
     std::locale lc("zh_CN.UTF-8");
     std::locale::global(lc);
@@ -10,15 +10,15 @@ cnocr::cnocr(cnocr::USE_MODLE themodle)
     {
     case USE_MODLE::cnocr136fc:
         this->ctc_path=L"dict/label_cn.txt";
-        this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(L"modle/cnocr136fc.onnx"));
+        this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(L"modle/cnocr136fc.onnx",device));
         break;
     case USE_MODLE::en_number:
         this->ctc_path=L"dict/en_dict.txt";
-        this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(L"modle/en_number_mobile_v2.0_rec_infer.onnx"));
+        this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(L"modle/en_number_mobile_v2.0_rec_infer.onnx",device));
         break;
     case USE_MODLE::chinese_cht:
         this->ctc_path=L"dict/chinese_cht_dict.txt";
-        this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(L"modle/chinese_cht_PP-OCRv3_rec_infer.onnx"));
+        this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(L"modle/chinese_cht_PP-OCRv3_rec_infer.onnx",device));
         break;
     default:
         break;

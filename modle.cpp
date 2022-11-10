@@ -1,15 +1,24 @@
 #include "modle.h"
 #include <iostream>
-onnxmodle::onnxmodle(wchar_t * modle_path)
+onnxmodle::onnxmodle(wchar_t * modle_path,USE_DEVICE device)
 {
 
   Ort::Env env(ORT_LOGGING_LEVEL_WARNING,"test");
   this->env=std::move(env);
   this->session_options.SetInterOpNumThreads(1);
-  this->session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
-  this->api.CreateTensorRTProviderOptions(&tensorrt_option);
-  std::unique_ptr<OrtTensorRTProviderOptionsV2,decltype(api.ReleaseTensorRTProviderOptions)>  rel_trt_options(tensorrt_option,api.ReleaseTensorRTProviderOptions);
-  this->api.SessionOptionsAppendExecutionProvider_TensorRT_V2(static_cast<OrtSessionOptions*>(session_options), rel_trt_options.get());
+  this->session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+  switch (device)
+  {
+  case USE_DEVICE::CUDA:
+    this->session_options.AppendExecutionProvider_CUDA(OrtCUDAProviderOptions());
+    break;
+  
+  case USE_DEVICE::TensorRT:
+    this->api.CreateTensorRTProviderOptions(&tensorrt_option);
+    std::unique_ptr<OrtTensorRTProviderOptionsV2,decltype(api.ReleaseTensorRTProviderOptions)>  rel_trt_options(tensorrt_option,api.ReleaseTensorRTProviderOptions);
+    this->api.SessionOptionsAppendExecutionProvider_TensorRT_V2(static_cast<OrtSessionOptions*>(session_options), rel_trt_options.get());
+    break;
+  }
   //此处应该检测modle_path文件存在与否
   Ort::Session *session=new Ort::Session(this->env, modle_path, this->session_options);
   this->session=session;

@@ -28,7 +28,7 @@ private:
     USE_MODLE use_modle;
     /* data */
 public:
-    cnocr(cnocr::USE_MODLE=USE_MODLE::cnocr136fc);
+    cnocr(cnocr::USE_MODLE=USE_MODLE::cnocr136fc,USE_DEVICE device=USE_DEVICE::TensorRT);
     std::vector<std::pair<std::wstring,float>> ocr(std::string path);
     std::vector<std::pair<std::wstring,float>> ocr(cv::Mat& img);
     std::vector<std::wstring> ocrtable(cv::Mat img);
