@@ -77,15 +77,14 @@ std::vector<cv::UMat> cnocr::line_split(cv::UMat& inimg){
     std::vector<cv::UMat> list;
     auto imgcol=inimg.cols;
     auto imgrow=inimg.rows;
-    auto bij=inimg.row(0).getMat(cv::ACCESS_RW);
-    for (int i=0;i<imgrow;i++){
-        *(bij.data+i)=255;
-    }
+    cv::UMat outimg;
+    cv::subtract(255,inimg,outimg);
+    cv::reduce(outimg,outimg,1,cv::REDUCE_MAX);
+    cv::Mat outimgr=outimg.getMat(cv::ACCESS_READ);
     int lineforchar=0;
     int lineforcharstart=0;
     for (int i=0;i<imgrow;i++){
-        cv::Mat res=bij-inimg.row(i).getMat(cv::ACCESS_READ);
-        if (*std::max_element(res.begin<uchar>(),res.end<uchar>())>100){
+        if (outimgr.at<uchar>(i)>100){
             if (lineforchar+1==i){
                 lineforchar++;
             }
@@ -176,6 +175,7 @@ std::vector<std::pair<std::wstring,float>> cnocr::ocr_for_single_lines(std::vect
             break;
         
         case USE_MODLE::en_number:
+            [[fallthrough]];
         case USE_MODLE::chinese_cht:
             ret_data=this->modle->run_en(input_width,input_height*input_width*3,imgresize.getMat(cv::ACCESS_READ).data);
             int64_t length=(int64_t)ret_data[0];
