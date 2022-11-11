@@ -32,27 +32,27 @@ std::unique_ptr<OrtTensorRTProviderOptionsV2> get_default_trt_provider_options()
 
 
 void run_ort_trt(long long input_lengths,long long x_length,unsigned char * x);
-enum USE_DEVICE{
-  TensorRT,
-  CUDA,
-};
-class onnxmodle
-{
-private:
-    Ort::Env env;
-    const OrtApi& api=Ort::GetApi();
-    OrtTensorRTProviderOptionsV2* tensorrt_option;
-    Ort::SessionOptions session_options;
-    Ort::Session *session;
-    Ort::AllocatorWithDefaultOptions allocator;
-    size_t num_input_nodes;
-    std::vector<const char*> input_node_names;
-    std::vector<int64_t> input_node_dims;
-public:
-    std::vector<void *> run(long long input_lengths,long long x_length,unsigned char * x);
-    std::vector<void *> run_en(long long input_lengths,long long x_length,unsigned char * x);
-    onnxmodle(wchar_t * modle_path,USE_DEVICE device=USE_DEVICE::TensorRT);
-    ~onnxmodle();
-};
-
-
+namespace cnocrmodle{
+  enum class USE_DEVICE{
+    TensorRT,
+    CUDA,
+  };
+  class onnxmodle
+  {
+  private:
+      Ort::Env env;
+      const OrtApi& api=Ort::GetApi();
+      OrtTensorRTProviderOptionsV2* tensorrt_option;
+      Ort::SessionOptions session_options;
+      Ort::Session *session;
+      Ort::AllocatorWithDefaultOptions allocator;
+      size_t num_input_nodes;
+      std::vector<const char*> input_node_names;
+      std::vector<int64_t> input_node_dims;
+  public:
+      std::vector<void *> run(long long input_lengths,long long x_length,unsigned char * x);
+      std::vector<void *> run_en(long long input_lengths,long long x_length,unsigned char * x);
+      onnxmodle(wchar_t * modle_path,USE_DEVICE device=USE_DEVICE::TensorRT);
+      ~onnxmodle();
+  };
+}

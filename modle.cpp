@@ -1,5 +1,6 @@
 #include "modle.h"
 #include <iostream>
+namespace cnocrmodle{
 onnxmodle::onnxmodle(wchar_t * modle_path,USE_DEVICE device)
 {
 
@@ -125,11 +126,13 @@ std::vector<void*> onnxmodle::run_en(long long input_length,long long x_length,u
   }
   std::cout<<std::endl;
   auto length=shape.at(1);
-  std::vector<void *> ret={(void *)length,(void*)output_lengths};
+  auto width=shape.at(2);
+  std::vector<void *> ret={(void *)length,(void *)width,(void*)output_lengths};
   printf("Done!\n");
   return ret;
 }
 onnxmodle::~onnxmodle()
 {
   delete this->session;
+}
 }

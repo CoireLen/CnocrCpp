@@ -1,8 +1,9 @@
 #include "cnocr.h"
 #include <algorithm>
 #include <locale>
-cnocr::cnocr(cnocr::USE_MODLE themodle,USE_DEVICE device)
+cnocr::cnocr(cnocr::USE_MODLE themodle,cnocrmodle::USE_DEVICE device)
 {
+    using namespace cnocrmodle;
     std::locale lc("zh_CN.UTF-8");
     std::locale::global(lc);
     this->use_modle=themodle;
@@ -175,9 +176,11 @@ std::vector<std::pair<std::wstring,float>> cnocr::ocr_for_single_lines(std::vect
             break;
         
         case USE_MODLE::en_number:
+        case USE_MODLE::chinese_cht:
             ret_data=this->modle->run_en(input_width,input_height*input_width*3,imgresize.data);
-            int64_t size=(int64_t)ret_data[0];
-            ncdata=cv::Mat(size,97,CV_32FC1,(float*)ret_data[1]);
+            int64_t length=(int64_t)ret_data[0];
+            int64_t width=(int64_t)ret_data[1];
+            ncdata=cv::Mat(length,width,CV_32FC1,(float*)ret_data[2]);
             break;
         }
         
