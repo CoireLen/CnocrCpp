@@ -9,7 +9,7 @@
   支持繁体中文识别
   
   ## 20221110
-  
+  opencv Mat 替换为Umat，性能得到了一点点提升
   onnxruntime 可以调用CUDA进行模型计算
   
   ## 20221109
@@ -65,7 +65,7 @@ void run_cnocr(){
 1:ONNX版本；2）从其他ocr引擎搬运过来的训练好的外部模型，ONNX化后用于 cnocr中。,0.721081
 
 2:The Rust Standard Library is the foundation of portable Rust software, a set of minimal and battle-tested shared abstractions for the,0.535793
-3:broader Rust ecosystem. It offers core types, like Vec<T> and Option<T>, library-defined operations on language primitives,,0.515892
+3:broader Rust ecosystem. It offers core types, like Vec<T> and Option<T>, library-defined operations on language primitives,,0.51892
 4:standard macros, I/O and multithreading, among many other things.,0.579248
 
 5:如能粗略定位問題所牽涉的代碼巖請到相應的此代碼庫提交吋,0.0598933
