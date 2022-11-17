@@ -21,12 +21,12 @@ void run_cnocr(){
     time_end=system_clock::now();
     std::cout <<"运行中文模型耗时:"<<duration_cast<milliseconds>(time_end - cnRun_start).count()<<"ms"<<std::endl;
     std::cout <<"中文模型总耗时:"<<duration_cast<milliseconds>(time_end - time_start).count()<<"ms"<<std::endl;
-    cnocr enocr(cnocr::USE_MODLE::en_number);//使用英文识别模型
-    for (auto line:enocr.ocr("D:/Dev/CPP/CnocrCpp/enocr.png")){
-        std::wcout<<i++<<":"<<line.first<<","<<line.second<<std::endl;
-    }
-    cnocr ctocr(cnocr::USE_MODLE::chinese_cht);//使用繁体识别
-    for (auto line:ctocr.ocr("D:/Dev/CPP/CnocrCpp/ctocr.png")){
-        std::wcout<<i++<<":"<<line.first<<","<<line.second<<std::endl;
-    }
+    //cnocr enocr(cnocr::USE_MODLE::en_number);//使用英文识别模型
+    //for (auto line:enocr.ocr("D:/Dev/CPP/CnocrCpp/enocr.png")){
+    //    std::wcout<<i++<<":"<<line.first<<","<<line.second<<std::endl;
+    //}
+    //cnocr ctocr(cnocr::USE_MODLE::chinese_cht);//使用繁体识别
+    //for (auto line:ctocr.ocr("D:/Dev/CPP/CnocrCpp/ctocr.png")){
+    //    std::wcout<<i++<<":"<<line.first<<","<<line.second<<std::endl;
+    //}
 }

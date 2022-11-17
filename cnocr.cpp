@@ -12,6 +12,7 @@ cnocr::cnocr(cnocr::USE_MODLE themodle,cnocrmodle::USE_DEVICE device)
     case USE_MODLE::cnocr136fc:
         this->ctc_path=L"dict/label_cn.txt";
         this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(L"modle/cnocr136fc.onnx",device));
+        //this->modle =std::make_unique<onnxmodle>(L"modle/cnocr136fc.onnx",device);
         break;
     case USE_MODLE::en_number:
         this->ctc_path=L"dict/en_dict.txt";
