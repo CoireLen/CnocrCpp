@@ -1,4 +1,3 @@
-#include "modle.h"
 #include <string>
 #include <memory>
 #ifdef min
@@ -9,7 +8,9 @@
 #endif
 #include <opencv2/opencv.hpp>
 #include <fstream>
-
+#ifndef _CNOCR_MODLE_H
+#include "modle.h"
+#endif
 class cnocr
 {
 public:

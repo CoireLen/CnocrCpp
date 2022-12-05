@@ -1,10 +1,13 @@
 #include "cnocr.h"
+#include "cnstd.h"
 #include <chrono>
 void run_cnocr();
+void run_cnstd();
 using namespace std::chrono;
 int main(){
     auto time_start=system_clock::now();
     run_cnocr();
+    //run_cnstd();
     auto time_end=system_clock::now();
     std::cout <<"程序总耗时:"<<duration_cast<milliseconds>(time_end - time_start).count()<<"ms"<<std::endl;
 }
@@ -29,4 +32,8 @@ void run_cnocr(){
     //for (auto line:ctocr.ocr("D:/Dev/CPP/CnocrCpp/ctocr.png")){
     //    std::wcout<<i++<<":"<<line.first<<","<<line.second<<std::endl;
     //}
+}
+void run_cnstd(){
+    CnStd cnstd;
+    cnstd.detect("D:/Dev/CPP/CnocrCpp/cnocr.png");
 }
