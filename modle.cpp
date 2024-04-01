@@ -2,7 +2,7 @@
 #include <iostream>
 #include <fstream>
 namespace cnocrmodle{
-onnxmodle::onnxmodle(wchar_t * modle_path,USE_DEVICE device)
+onnxmodle::onnxmodle(std::wstring modle_path,USE_DEVICE device)
 {
 
   Ort::Env env(ORT_LOGGING_LEVEL_WARNING,"test");
@@ -26,13 +26,13 @@ onnxmodle::onnxmodle(wchar_t * modle_path,USE_DEVICE device)
     assert(f.good()==true);
     f.close();
   //
-  Ort::Session *session=new Ort::Session(this->env, modle_path, this->session_options);
+  Ort::Session *session=new Ort::Session(this->env, modle_path.c_str(), this->session_options);
   this->session=session;
   this->num_input_nodes = this->session->GetInputCount();
   std::vector<const char*> input_node_names(this->num_input_nodes);
   this->input_node_names=std::move(input_node_names);
   printf("Number of inputs = %zu\n", this->num_input_nodes);
-  char* input_names[]={"x","input_lengths"};
+  char* input_names[2]={(char *)inputname_str[0].c_str(),(char *)inputname_str[1].c_str()};
   for (int i = 0; i < this->num_input_nodes; i++) {
     // print input node names
     this->input_node_names[i] = input_names[i];
@@ -99,8 +99,8 @@ std::vector<void*> onnxmodle::run_en(long long input_length,long long x_length,u
   std::vector<const char*> output_node_names;//输出节点名称
   size_t outputcount=this->session->GetOutputCount();//获取输出节点数量
   for (size_t i=0;i<outputcount;i++){
-    char * outputname=this->session->GetOutputName(i,this->allocator);
-    output_node_names.push_back(outputname);
+    Ort::AllocatedStringPtr outputname = this->session->GetInputNameAllocated(i, allocator);
+    output_node_names.push_back(outputname.get());
   }
   // initialize input data with values in [0.0, 1.0]
   // RGB RGB RGB 转 RRRR GGGGG BBBB
@@ -144,8 +144,8 @@ runreturn onnxmodle::run_std(int64_t height,int64_t width,long long x_length,uns
   std::vector<const char*> output_node_names;//输出节点名称
   size_t outputcount=this->session->GetOutputCount();//获取输出节点数量
   for (size_t i=0;i<outputcount;i++){
-    char * outputname=this->session->GetOutputName(i,this->allocator);
-    output_node_names.push_back(outputname);
+    Ort::AllocatedStringPtr outputname = this->session->GetInputNameAllocated(i, allocator);
+    output_node_names.push_back(outputname.get());
   }
   // initialize input data with values in [0.0, 1.0]
   // RGB RGB RGB 转 RRRR GGGGG BBBB

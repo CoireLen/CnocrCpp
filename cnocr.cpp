@@ -10,17 +10,20 @@ cnocr::cnocr(cnocr::USE_MODLE themodle,cnocrmodle::USE_DEVICE device)
     switch (themodle)
     {
     case USE_MODLE::cnocr136fc:
-        this->ctc_path=L"dict/label_cn.txt";
-        this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(L"modle/cnocr136fc.onnx",device));
+        this->ctc_path_str=L"dict/label_cn.txt";
+        this->ctc_path=(wchar_t *)this->ctc_path_str.c_str();
+        this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(std::wstring(L"modle/cnocr136fc.onnx"),device));
         //this->modle =std::make_unique<onnxmodle>(L"modle/cnocr136fc.onnx",device);
         break;
     case USE_MODLE::en_number:
-        this->ctc_path=L"dict/en_dict.txt";
-        this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(L"modle/en_number_mobile_v2.0_rec_infer.onnx",device));
+        this->ctc_path_str=L"dict/en_dict.txt";
+        this->ctc_path=(wchar_t *)this->ctc_path_str.c_str();
+        this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(std::wstring(L"modle/en_number_mobile_v2.0_rec_infer.onnx"),device));
         break;
     case USE_MODLE::chinese_cht:
-        this->ctc_path=L"dict/chinese_cht_dict.txt";
-        this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(L"modle/chinese_cht_PP-OCRv3_rec_infer.onnx",device));
+        this->ctc_path_str=L"dict/chinese_cht_dict.txt";
+        this->ctc_path=(wchar_t *)this->ctc_path_str.c_str();
+        this->modle =std::unique_ptr<onnxmodle>(new onnxmodle(std::wstring(L"modle/chinese_cht_PP-OCRv3_rec_infer.onnx"),device));
         break;
     default:
         break;
@@ -170,14 +173,18 @@ std::vector<std::pair<std::wstring,float>> cnocr::ocr_for_single_lines(std::vect
         switch (this->use_modle)
         {
         case USE_MODLE::cnocr136fc:
+            std::cout <<"Use Modle:"<<"cnocr136fc  input_width:"<<input_width<<"    input_height:"<<input_height<<std::endl;
             ret_data=this->modle->run(input_width,input_height*input_width,imgresize.getMat(cv::ACCESS_READ).data);
+            std::cout <<"Modle Run Sucess"<<std::endl;
             ncdata=cv::Mat(*(int64_t*)ret_data[0],6674,CV_32FC1,(float*)ret_data[1]);
             softmax(ncdata);
             break;
         
         case USE_MODLE::en_number:
+            std::cout <<"Use Modle:"<<"en_number"<<std::endl;
             [[fallthrough]];
         case USE_MODLE::chinese_cht:
+            std::cout <<"Use Modle:"<<"chinese_cht"<<std::endl;
             ret_data=this->modle->run_en(input_width,input_height*input_width*3,imgresize.getMat(cv::ACCESS_READ).data);
             int64_t length=(int64_t)ret_data[0];
             int64_t width=(int64_t)ret_data[1];

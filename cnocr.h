@@ -24,6 +24,7 @@ private:
     std::vector<std::pair<std::wstring,float>> ocr_for_single_lines(std::vector<cv::UMat>& inimgs);
     std::wstring ctc_best(std::vector<uint16_t>);
     std::unique_ptr<cnocrmodle::onnxmodle> modle;
+    std::wstring ctc_path_str;
     wchar_t * ctc_path;
     std::vector<wchar_t> ctc_data;
     USE_MODLE use_modle;

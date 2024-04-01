@@ -56,11 +56,12 @@ namespace cnocrmodle{
       size_t num_input_nodes;
       std::vector<const char*> input_node_names;
       std::vector<int64_t> input_node_dims;
+      std::vector<std::string> inputname_str{"x","input_lengths"};
   public:
       std::vector<void *> run(long long input_lengths,long long x_length,unsigned char * x);
       std::vector<void *> run_en(long long input_lengths,long long x_length,unsigned char * x);
       runreturn run_std(int64_t height,int64_t width,long long x_length,unsigned char * x);
-      onnxmodle(wchar_t * modle_path,USE_DEVICE device=USE_DEVICE::TensorRT);
+      onnxmodle(std::wstring modle_path,USE_DEVICE device=USE_DEVICE::TensorRT);
       ~onnxmodle();
   };
 }
