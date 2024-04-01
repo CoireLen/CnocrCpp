@@ -4,7 +4,9 @@
 - onnxruntime 自 https://github.com/microsoft/onnxruntime/releases 下载后 放入此文件夹或自行更改CMakeListsCMAK
 - onnxruntime版本为1.17
 - 另 需求 vcpkg (opencv) 包
+  ## 20240401
   
+  修改以支持新版onnxruntime
   ## 20221111
   
   支持繁体中文识别
