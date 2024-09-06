@@ -2,12 +2,12 @@
 
 - 一份来自python cnocr的cpp实现，官方文档->[CnOcr文档](https://cnocr.readthedocs.io/zh/latest/)
 - onnxruntime 自 https://github.com/microsoft/onnxruntime/releases 下载后 放入此文件夹或自行更改CMakeListsCMAK
-- onnxruntime版本为1.17
+- onnxruntime版本为1.19
 - 另 需求 vcpkg (opencv) 包
 - 如只需截图识别工具请见 [ScreenCutOcrCn](https://github.com/CoireLen/ScreenCutOcrCn)
   ## 20240906
-  测试 onnxruntime 1.19.2 , 新版onnxruntime 需要新的模型文件。以支持动态轴输入。不会！所以不更新。
-  
+  更新支持为 1.19 版本。
+
   ## 20240401
   
   修改以支持新版onnxruntime

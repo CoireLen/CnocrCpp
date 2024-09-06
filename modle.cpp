@@ -144,9 +144,13 @@ runreturn onnxmodle::run_std(int64_t height,int64_t width,long long x_length,uns
   std::vector<const char*> output_node_names;//输出节点名称
   size_t outputcount=this->session->GetOutputCount();//获取输出节点数量
   for (size_t i=0;i<outputcount;i++){
-    Ort::AllocatedStringPtr outputname = this->session->GetInputNameAllocated(i, allocator);
+    Ort::AllocatedStringPtr outputname = this->session->GetOutputNameAllocated(i, allocator);
     output_node_names.push_back(outputname.get());
   }
+  for(auto i :output_node_names){
+    std::cout<<"output_node_name:"<<i<<std::endl;
+  }
+  
   // initialize input data with values in [0.0, 1.0]
   // RGB RGB RGB 转 RRRR GGGGG BBBB
   for (unsigned int i = 0; i < input_tensor_size; i++){
@@ -162,6 +166,7 @@ runreturn onnxmodle::run_std(int64_t height,int64_t width,long long x_length,uns
   std::vector<Ort::Value> input_tensor_data;
   input_tensor_data.push_back(std::move(input_tensor));
   // score model & input tensor, get back output tensor
+
   auto output_tensors = this->session->Run(Ort::RunOptions{nullptr}, input_node_names.data(),input_tensor_data.data() , 1, output_node_names.data(), 1);
 
   // Get pointer to output tensor float values

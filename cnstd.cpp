@@ -40,17 +40,17 @@ cv::Mat CnStd::detect_one(cv::Mat img,cv::Size2i resized_shape,bool preserve_asp
     long long input_width=img.size[1];
     auto ret_data=this->modle->run_std(input_height,input_width,input_height*input_width*3,img.data);
     std::for_each(ret_data.shape.begin(),ret_data.shape.end(),[](int64_t x){std::cout<<x<<" ";});
-    //int64_t length=(int64_t)ret_data[0];
-    //int64_t width=(int64_t)ret_data[1];
-    //auto ncdata=cv::Mat(length,width,CV_32FC1,(float*)ret_data[2]);
+    int64_t length=(int64_t)ret_data.shape[0];
+    int64_t width=(int64_t)ret_data.shape[1];
+    auto ncdata=cv::Mat(length,width,CV_32FC1,(float*)ret_data.data);
     //运行模型完毕
-    //printf("(%d,%d)",length,width);
-    //for(int i=0;i<length*width;i++){
-    //    std::cout<<ncdata.at<double>(i)<<"  , ";
-    //    if (((i+1)%width)==0){
-    //        putchar('\n');
-    //    }
-    //}
+    printf("(%d,%d)",length,width);
+    for(int i=0;i<length*width;i++){
+        std::cout<<ncdata.at<double>(i)<<"  , ";
+        if (((i+1)%width)==0){
+            putchar('\n');
+        }
+    }
     filter_tag_det_res();
     sorted_boxes;
     cv::Mat retMat;
