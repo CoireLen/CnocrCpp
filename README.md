@@ -5,6 +5,9 @@
 - onnxruntime版本为1.17
 - 另 需求 vcpkg (opencv) 包
 - 如只需截图识别工具请见 [ScreenCutOcrCn](https://github.com/CoireLen/ScreenCutOcrCn)
+  ## 20240906
+  测试 onnxruntime 1.19.2 , 新版onnxruntime 需要新的模型文件。以支持动态轴输入。不会！所以不更新。
+  
   ## 20240401
   
   修改以支持新版onnxruntime
