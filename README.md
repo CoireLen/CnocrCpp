@@ -5,6 +5,8 @@
 - onnxruntime版本为1.19
 - 另 需求 vcpkg (opencv) 包
 - 如只需截图识别工具请见 [ScreenCutOcrCn](https://github.com/CoireLen/ScreenCutOcrCn)
+  ## 20240909
+  修改 以支持生成DLL
   ## 20240906
   更新支持为 1.19 版本。
 
