@@ -1,192 +1,194 @@
 #include "modle.h"
-#include <iostream>
+
+#include <algorithm>
 #include <fstream>
-namespace cnocrmodle{
-onnxmodle::onnxmodle(std::wstring modle_path,USE_DEVICE device)
-{
+#include <iostream>
+#include <stdexcept>
 
-  Ort::Env env(ORT_LOGGING_LEVEL_WARNING,"test");
-  this->env=std::move(env);
-  this->session_options.SetInterOpNumThreads(1);
-  this->session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-  switch (device)
-  {
-  case USE_DEVICE::CUDA:
-    this->session_options.AppendExecutionProvider_CUDA(OrtCUDAProviderOptions());
-    break;
-  
-  case USE_DEVICE::TensorRT:
-    this->api.CreateTensorRTProviderOptions(&tensorrt_option);
-    std::unique_ptr<OrtTensorRTProviderOptionsV2,decltype(api.ReleaseTensorRTProviderOptions)>  rel_trt_options(tensorrt_option,api.ReleaseTensorRTProviderOptions);
-    this->api.SessionOptionsAppendExecutionProvider_TensorRT_V2(static_cast<OrtSessionOptions*>(session_options), rel_trt_options.get());
-    break;
-  }
-  //此处应该检测modle_path文件存在与否
-    std::ifstream f(modle_path);
-    assert(f.good()==true);
-    f.close();
-  //
-  Ort::Session *session=new Ort::Session(this->env, modle_path.c_str(), this->session_options);
-  this->session=session;
-  this->num_input_nodes = this->session->GetInputCount();
-  std::vector<const char*> input_node_names(this->num_input_nodes);
-  this->input_node_names=std::move(input_node_names);
-  printf("Number of inputs = %zu\n", this->num_input_nodes);
-  char* input_names[2]={(char *)inputname_str[0].c_str(),(char *)inputname_str[1].c_str()};
-  for (int i = 0; i < this->num_input_nodes; i++) {
-    // print input node names
-    this->input_node_names[i] = input_names[i];
+namespace cnocrmodle {
+namespace {
 
-    // print input node types
-    Ort::TypeInfo type_info = session->GetInputTypeInfo(i);
-    auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
-
-    ONNXTensorElementDataType type = tensor_info.GetElementType();
-    printf("Input %d : type=%d\n", i, type);
-
-    // print input shapes/dims
-    input_node_dims = tensor_info.GetShape();
-    printf("Input %d : num_dims=%zu\n", i, input_node_dims.size());
-    for (size_t j = 0; j < input_node_dims.size(); j++)
-      printf("Input %d : dim %zu=%jd\n", i, j, input_node_dims[j]);
-  }
-}
-std::vector<void*> onnxmodle::run(long long input_length,long long x_length,unsigned char * x) {
-  size_t input_tensor_size = 32*input_length;  // simplify ... using known dim values to calculate size
-                                             // use OrtGetTensorShapeElementCount() to get official size!
-
-  std::vector<float> input_tensor_values(input_tensor_size);
-  std::vector<const char*> output_node_names = {"output_lengths","logits"};
-
-  // initialize input data with values in [0.0, 1.0]
-  for (unsigned int i = 0; i < x_length; i++){
-    input_tensor_values[i] = *(x+i)/255.0;
-  }
-    
-
-  // create input tensor object from data values
-  auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-  input_node_dims={1,1,32,input_length};
-  Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info, input_tensor_values.data(), input_tensor_size, input_node_dims.data(), 4);
-  std::vector<int64_t> input_tensor_length(1);
-  input_tensor_length[0]=input_length;
-  std::vector<int64_t> input_length_dims={1};
-  auto memory_info_length = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-  Ort::Value input_tensor_lengths = Ort::Value::CreateTensor<int64_t>(memory_info_length, input_tensor_length.data(), 1,input_length_dims.data(),1);
-  assert(input_tensor.IsTensor());
-  assert(input_tensor_lengths.IsTensor());
-  std::vector<Ort::Value> input_tensor_data;
-  input_tensor_data.push_back(std::move(input_tensor));
-  input_tensor_data.push_back(std::move(input_tensor_lengths));
-  // score model & input tensor, get back output tensor
-  auto output_tensors = this->session->Run(Ort::RunOptions{nullptr}, input_node_names.data(),input_tensor_data.data() , 2, output_node_names.data(), 2);
-  assert(output_tensors.size() == 2 && output_tensors.front().IsTensor());
-  for (auto i :output_node_names){
-    std::cout <<i<<std::endl;
-  }
-  // Get pointer to output tensor float values
-  int64_t*  output_lengths= output_tensors[0].GetTensorMutableData<int64_t>();
-  float * logits=output_tensors[1].GetTensorMutableData<float>();
-  // release buffers allocated by ORT alloctor
-  std::vector<void *> ret={(void*)output_lengths,(void*)logits};
-  printf("Done!\n");
-  return ret;
-}
-std::vector<void*> onnxmodle::run_en(long long input_length,long long x_length,unsigned char * x) {
-  size_t input_tensor_size = x_length ;  // simplify ... using known dim values to calculate size
-                                             // use OrtGetTensorShapeElementCount() to get official size!
-  std::vector<float> input_tensor_values(input_tensor_size);
-  std::vector<const char*> output_node_names;//输出节点名称
-  size_t outputcount=this->session->GetOutputCount();//获取输出节点数量
-  for (size_t i=0;i<outputcount;i++){
-    Ort::AllocatedStringPtr outputname = this->session->GetInputNameAllocated(i, allocator);
-    output_node_names.push_back(outputname.get());
-  }
-  // initialize input data with values in [0.0, 1.0]
-  // RGB RGB RGB 转 RRRR GGGGG BBBB
-  for (unsigned int i = 0; i < input_tensor_size; i++){
-    input_tensor_values[i] = *(x+i%(input_length*32))/255.0;//R
-  }
-    
-
-  // create input tensor object from data values
-  auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-  input_node_dims={1,3,32,input_length};
-  Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info, input_tensor_values.data(), input_tensor_size*3, input_node_dims.data(), 4);
-  assert(input_tensor.IsTensor());
-  std::vector<Ort::Value> input_tensor_data;
-  input_tensor_data.push_back(std::move(input_tensor));
-  // score model & input tensor, get back output tensor
-  auto output_tensors = this->session->Run(Ort::RunOptions{nullptr}, input_node_names.data(),input_tensor_data.data() , 1, output_node_names.data(), 1);
-
-  // Get pointer to output tensor float values
-  float*  output_lengths= output_tensors[0].GetTensorMutableData<float>();
-  //float * logits=output_tensors[1].GetTensorMutableData<float>();
-  // release buffers allocated by ORT alloctor
-  auto output_info=output_tensors[0].GetTensorTypeAndShapeInfo();
-  auto shape=output_info.GetShape();
-  std::cout<<"Shape: ";
-  for (auto i:shape){
-    std::cout<<i<<" ";
-  }
-  std::cout<<std::endl;
-  auto length=shape.at(1);
-  auto width=shape.at(2);
-  std::vector<void *> ret={(void *)length,(void *)width,(void*)output_lengths};
-  printf("Done!\n");
-  return ret;
+void append_execution_provider(Ort::SessionOptions& options, USE_DEVICE device) {
+    if (device == USE_DEVICE::CPU) {
+        return;
+    }
+    try {
+        if (device == USE_DEVICE::CUDA) {
+            OrtCUDAProviderOptions cuda_options{};
+            options.AppendExecutionProvider_CUDA(cuda_options);
+        } else {
+            const OrtApi& api = Ort::GetApi();
+            OrtTensorRTProviderOptionsV2* trt_options = nullptr;
+            Ort::ThrowOnError(api.CreateTensorRTProviderOptions(&trt_options));
+            try {
+                Ort::ThrowOnError(api.SessionOptionsAppendExecutionProvider_TensorRT_V2(
+                    static_cast<OrtSessionOptions*>(options), trt_options));
+            } catch (...) {
+                api.ReleaseTensorRTProviderOptions(trt_options);
+                throw;
+            }
+            api.ReleaseTensorRTProviderOptions(trt_options);
+        }
+    } catch (const std::exception& e) {
+        // 当前 onnxruntime 包可能未附带对应 provider，退回 CPU
+        std::cerr << "执行提供器不可用，回退到 CPU: " << e.what() << std::endl;
+    }
 }
 
-runreturn onnxmodle::run_std(int64_t height,int64_t width,long long x_length,unsigned char * x) {
-  size_t input_tensor_size = x_length ;  // simplify ... using known dim values to calculate size
-                                             // use OrtGetTensorShapeElementCount() to get official size!
-  std::vector<float> input_tensor_values(input_tensor_size);
-  std::vector<const char*> output_node_names;//输出节点名称
-  size_t outputcount=this->session->GetOutputCount();//获取输出节点数量
-  for (size_t i=0;i<outputcount;i++){
-    Ort::AllocatedStringPtr outputname = this->session->GetOutputNameAllocated(i, allocator);
-    output_node_names.push_back(outputname.get());
-  }
-  for(auto i :output_node_names){
-    std::cout<<"output_node_name:"<<i<<std::endl;
-  }
-  
-  // initialize input data with values in [0.0, 1.0]
-  // RGB RGB RGB 转 RRRR GGGGG BBBB
-  for (unsigned int i = 0; i < input_tensor_size; i++){
-    input_tensor_values[i] = *(x+i%(width*height))/255.0;//R
-  }
-    
-
-  // create input tensor object from data values
-  auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-  input_node_dims={1,3,height,width};
-  Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info, input_tensor_values.data(), x_length, input_node_dims.data(), 4);
-  assert(input_tensor.IsTensor());
-  std::vector<Ort::Value> input_tensor_data;
-  input_tensor_data.push_back(std::move(input_tensor));
-  // score model & input tensor, get back output tensor
-
-  auto output_tensors = this->session->Run(Ort::RunOptions{nullptr}, input_node_names.data(),input_tensor_data.data() , 1, output_node_names.data(), 1);
-
-  // Get pointer to output tensor float values
-  float*  output_data= output_tensors[0].GetTensorMutableData<float>();
-  //float * logits=output_tensors[1].GetTensorMutableData<float>();
-  // release buffers allocated by ORT alloctor
-  auto output_info=output_tensors[0].GetTensorTypeAndShapeInfo();
-  auto shape=output_info.GetShape();
-  std::cout<<"Shape: ";
-  for (auto i:shape){
-    std::cout<<i<<" ";
-  }
-  
-  std::cout<<std::endl;
-  auto length=shape.size();
-  printf("Done!\n");
-  return runreturn{shape,output_data};
+const Ort::Value* find_output(const std::vector<Ort::Value>& outputs, size_t rank,
+                              ONNXTensorElementDataType type) {
+    for (const Ort::Value& tensor : outputs) {
+        auto info = tensor.GetTensorTypeAndShapeInfo();
+        if (info.GetShape().size() == rank && info.GetElementType() == type) {
+            return &tensor;
+        }
+    }
+    return nullptr;
 }
-onnxmodle::~onnxmodle()
-{
-  delete this->session;
+
+template <typename T>
+void copy_tensor_data(const Ort::Value& tensor, std::vector<T>& target, size_t count) {
+    const T* data = tensor.GetTensorData<T>();
+    target.assign(data, data + count);
 }
+
+}  // namespace
+
+onnxmodle::onnxmodle(const std::wstring& model_path, USE_DEVICE device)
+    : env_(ORT_LOGGING_LEVEL_WARNING, "cnocr") {
+    {
+        std::ifstream probe(model_path, std::ios::binary);
+        if (!probe.good()) {
+            throw std::runtime_error("模型文件不存在或无法读取");
+        }
+    }
+
+    session_options_.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+    append_execution_provider(session_options_, device);
+    session_ = std::make_unique<Ort::Session>(env_, model_path.c_str(), session_options_);
+
+    Ort::AllocatorWithDefaultOptions allocator;
+    input_name_storage_.reserve(session_->GetInputCount());
+    for (size_t i = 0; i < session_->GetInputCount(); ++i) {
+        auto name = session_->GetInputNameAllocated(i, allocator);
+        input_name_storage_.emplace_back(name.get());
+        auto type_info = session_->GetInputTypeInfo(i).GetTensorTypeAndShapeInfo();
+        input_shapes_.push_back(type_info.GetShape());
+    }
+    output_name_storage_.reserve(session_->GetOutputCount());
+    for (size_t i = 0; i < session_->GetOutputCount(); ++i) {
+        auto name = session_->GetOutputNameAllocated(i, allocator);
+        output_name_storage_.emplace_back(name.get());
+    }
+    for (auto& name : input_name_storage_) {
+        input_names_.push_back(name.c_str());
+    }
+    for (auto& name : output_name_storage_) {
+        output_names_.push_back(name.c_str());
+    }
 }
+
+onnxmodle::~onnxmodle() = default;
+
+std::vector<Ort::Value> onnxmodle::run_model(std::vector<Ort::Value>& inputs) const {
+    return session_->Run(Ort::RunOptions{nullptr}, input_names_.data(), inputs.data(),
+                         inputs.size(), output_names_.data(), output_names_.size());
+}
+
+rec_return onnxmodle::run_rec(const uint8_t* image, int height, int width, int channels) {
+    if (image == nullptr || height <= 0 || width <= 0 || (channels != 1 && channels != 3)) {
+        throw std::invalid_argument("run_rec 输入参数非法");
+    }
+
+    const size_t plane = static_cast<size_t>(height) * static_cast<size_t>(width);
+    std::vector<float> pixel_data(plane * static_cast<size_t>(channels));
+    for (int c = 0; c < channels; ++c) {
+        float* dst = pixel_data.data() + static_cast<size_t>(c) * plane;
+        for (size_t i = 0; i < plane; ++i) {
+            const float value = image[i * static_cast<size_t>(channels) + c] / 255.0f;
+            dst[i] = channels == 3 ? (value - 0.5f) / 0.5f : value;
+        }
+    }
+
+    auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+    int64_t image_dims[4] = {1, channels, height, width};
+    Ort::Value image_tensor = Ort::Value::CreateTensor<float>(
+        memory_info, pixel_data.data(), pixel_data.size(), image_dims, 4);
+
+    int64_t input_length = width;
+    int64_t length_dims[1] = {1};
+
+    // 按模型输入的实际顺序组装：一维输入为序列长度，其余为图像
+    std::vector<Ort::Value> inputs;
+    inputs.reserve(input_names_.size());
+    bool image_used = false;
+    for (size_t i = 0; i < input_names_.size(); ++i) {
+        const bool is_length_input =
+            i < input_shapes_.size() && input_shapes_[i].size() == 1;
+        if (is_length_input) {
+            inputs.push_back(Ort::Value::CreateTensor<int64_t>(memory_info, &input_length, 1,
+                                                               length_dims, 1));
+            continue;
+        }
+        if (image_used) {
+            throw std::runtime_error("识别模型包含多个图像输入，暂不支持");
+        }
+        inputs.push_back(std::move(image_tensor));
+        image_used = true;
+    }
+    if (!image_used) {
+        throw std::runtime_error("识别模型缺少图像输入");
+    }
+
+    std::vector<Ort::Value> outputs = run_model(inputs);
+    const Ort::Value* logits = find_output(outputs, 3, ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT);
+    if (logits == nullptr) {
+        throw std::runtime_error("识别模型未返回 3 维 logits");
+    }
+
+    auto logits_info = logits->GetTensorTypeAndShapeInfo();
+    const std::vector<int64_t> logits_shape = logits_info.GetShape();
+    rec_return result;
+    result.seq_len = logits_shape[1];
+    result.num_classes = logits_shape[2];
+    copy_tensor_data(*logits, result.logits,
+                     static_cast<size_t>(result.seq_len * result.num_classes));
+
+    const Ort::Value* lengths = find_output(outputs, 1, ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64);
+    if (lengths != nullptr) {
+        const int64_t count = lengths->GetTensorTypeAndShapeInfo().GetShape()[0];
+        copy_tensor_data(*lengths, result.lengths, static_cast<size_t>(count));
+    }
+    result.valid_len = result.lengths.empty()
+                           ? result.seq_len
+                           : std::clamp<int64_t>(result.lengths.front(), 0, result.seq_len);
+    return result;
+}
+
+det_return onnxmodle::run_det(float* chw, int height, int width) {
+    if (chw == nullptr || height <= 0 || width <= 0) {
+        throw std::invalid_argument("run_det 输入参数非法");
+    }
+
+    auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+    int64_t dims[4] = {1, 3, height, width};
+    std::vector<Ort::Value> inputs;
+    inputs.push_back(Ort::Value::CreateTensor<float>(
+        memory_info, chw, static_cast<size_t>(3) * height * width, dims, 4));
+
+    std::vector<Ort::Value> outputs = run_model(inputs);
+    const Ort::Value* prob = find_output(outputs, 4, ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT);
+    if (prob == nullptr) {
+        throw std::runtime_error("检测模型未返回 4 维概率图");
+    }
+
+    const std::vector<int64_t> shape = prob->GetTensorTypeAndShapeInfo().GetShape();
+    det_return result;
+    result.height = shape[2];
+    result.width = shape[3];
+    copy_tensor_data(*prob, result.prob,
+                     static_cast<size_t>(result.height * result.width));
+    return result;
+}
+
+}  // namespace cnocrmodle

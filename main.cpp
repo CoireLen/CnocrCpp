@@ -1,39 +1,80 @@
+#include <chrono>
+#include <iostream>
+#include <string>
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+
 #include "cnocr.h"
 #include "cnstd.h"
-#include <chrono>
-void run_cnocr();
-void run_cnstd();
+#include "text_utils.h"
+
 using namespace std::chrono;
-int main(){
-    auto time_start=system_clock::now();
-    //run_cnstd();
-    run_cnocr();
-    auto time_end=system_clock::now();
-    std::cout <<"程序总耗时:"<<duration_cast<milliseconds>(time_end - time_start).count()<<"ms"<<std::endl;
-}
-void run_cnocr(){
-    int i=0;
-    auto time_start=system_clock::now();
-    cnocr ocr(cnocr::USE_MODLE::cnocr136fc,cnocrmodle::USE_DEVICE::TensorRT);//使用中文模型，和GPU
-    auto time_end=system_clock::now();
-    std::cout <<"载入中文模型耗时:"<<duration_cast<milliseconds>(time_end - time_start).count()<<"ms"<<std::endl;
-    auto cnRun_start=system_clock::now();
-    for (auto line:ocr.ocr("D:/Dev/CPP/CnocrCpp/cnocr.png")){
-        std::wcout<<i++<<":"<<line.first<<","<<line.second<<std::endl;
+
+namespace {
+
+void run_ocr(cnocr& ocr, const std::string& image_path) {
+    const auto start = system_clock::now();
+    const auto lines = ocr.ocr(image_path);
+    const auto end = system_clock::now();
+
+    int index = 0;
+    for (const auto& line : lines) {
+        std::cout << index++ << ": " << textutils::wstring_to_utf8(line.first)
+                  << "  (置信度 " << line.second << ")" << std::endl;
     }
-    time_end=system_clock::now();
-    std::cout <<"运行中文模型耗时:"<<duration_cast<milliseconds>(time_end - cnRun_start).count()<<"ms"<<std::endl;
-    std::cout <<"中文模型总耗时:"<<duration_cast<milliseconds>(time_end - time_start).count()<<"ms"<<std::endl;
-    //cnocr enocr(cnocr::USE_MODLE::en_number);//使用英文识别模型
-    //for (auto line:enocr.ocr("D:/Dev/CPP/CnocrCpp/enocr.png")){
-    //    std::wcout<<i++<<":"<<line.first<<","<<line.second<<std::endl;
-    //}
-    //cnocr ctocr(cnocr::USE_MODLE::chinese_cht);//使用繁体识别
-    //for (auto line:ctocr.ocr("D:/Dev/CPP/CnocrCpp/ctocr.png")){
-    //    std::wcout<<i++<<":"<<line.first<<","<<line.second<<std::endl;
-    //}
+    std::cout << image_path << " 识别耗时: " << duration_cast<milliseconds>(end - start).count()
+              << "ms, 共 " << lines.size() << " 行" << std::endl;
 }
-void run_cnstd(){
+
+}  // namespace
+
+void run_cnocr() {
+    std::cout << "===== 中文模型 =====" << std::endl;
+    cnocr zh(cnocr::USE_MODLE::cnocr136fc, cnocrmodle::USE_DEVICE::CPU);
+    run_ocr(zh, "cnocr.png");
+
+    std::cout << "===== 英文数字模型 =====" << std::endl;
+    cnocr en(cnocr::USE_MODLE::en_number, cnocrmodle::USE_DEVICE::CPU);
+    run_ocr(en, "enocr.png");
+
+    std::cout << "===== 繁体中文模型 =====" << std::endl;
+    cnocr cht(cnocr::USE_MODLE::chinese_cht, cnocrmodle::USE_DEVICE::CPU);
+    run_ocr(cht, "ctocr.png");
+}
+
+void run_cnstd() {
     CnStd cnstd;
-    cnstd.detect("D:/Dev/CPP/CnocrCpp/cnocr.png");
+    const auto start = system_clock::now();
+    const auto boxes = cnstd.detect("cnocr.png");
+    const auto end = system_clock::now();
+    std::cout << "检测到 " << boxes.size() << " 个文本框, 耗时 "
+              << duration_cast<milliseconds>(end - start).count() << "ms" << std::endl;
+    for (size_t i = 0; i < boxes.size(); ++i) {
+        const DetBox& box = boxes[i];
+        std::cout << i << ": score=" << box.score << " points=[";
+        for (int k = 0; k < 4; ++k) {
+            std::cout << "(" << box.points[k].x << "," << box.points[k].y << ")"
+                      << (k == 3 ? "" : ", ");
+        }
+        std::cout << "]" << std::endl;
+    }
+}
+
+int main(int argc, char** argv) {
+    SetConsoleOutputCP(CP_UTF8);
+    const auto time_start = system_clock::now();
+
+    if (argc > 1 && std::string(argv[1]) == "det") {
+        run_cnstd();
+    } else {
+        run_cnocr();
+    }
+
+    const auto time_end = system_clock::now();
+    std::cout << "程序总耗时: " << duration_cast<milliseconds>(time_end - time_start).count()
+              << "ms" << std::endl;
+    return 0;
 }

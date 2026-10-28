@@ -1,67 +1,69 @@
+#ifndef CNOCR_MODELE_H
+#define CNOCR_MODELE_H
+
 #include <onnxruntime_cxx_api.h>
-#include <assert.h>
+#include <cstdint>
+#include <memory>
+#include <string>
 #include <vector>
-#define _CNOCR_MODLE_H
-#ifdef HAVE_TENSORRT_PROVIDER_FACTORY_H
-#include <tensorrt_provider_factory.h>
-#include <provider_options.h>
 
-std::unique_ptr<OrtTensorRTProviderOptionsV2> get_default_trt_provider_options() {
-  auto tensorrt_options = std::make_unique<OrtTensorRTProviderOptionsV2>();
-  tensorrt_options->device_id = 0;
-  tensorrt_options->has_user_compute_stream = 0;
-  tensorrt_options->user_compute_stream = nullptr;
-  tensorrt_options->trt_max_partition_iterations = 1000;
-  tensorrt_options->trt_min_subgraph_size = 1;
-  tensorrt_options->trt_max_workspace_size = 1 << 30;
-  tensorrt_options->trt_fp16_enable = false;
-  tensorrt_options->trt_int8_enable = false;
-  tensorrt_options->trt_int8_calibration_table_name = "";
-  tensorrt_options->trt_int8_use_native_calibration_table = false;
-  tensorrt_options->trt_dla_enable = false;
-  tensorrt_options->trt_dla_core = 0;
-  tensorrt_options->trt_dump_subgraphs = false;
-  tensorrt_options->trt_engine_cache_enable = false;
-  tensorrt_options->trt_engine_cache_path = "";
-  tensorrt_options->trt_engine_decryption_enable = false;
-  tensorrt_options->trt_engine_decryption_lib_path = "";
-  tensorrt_options->trt_force_sequential_engine_build = false;
+namespace cnocrmodle {
 
-  return tensorrt_options;
-}
-#endif
-
-
-void run_ort_trt(long long input_lengths,long long x_length,unsigned char * x);
-namespace cnocrmodle{
-  struct runreturn
-  {
-    std::vector<int64_t> shape;
-    void * data;
-  };
-  
-  enum class USE_DEVICE{
-    TensorRT,
+enum class USE_DEVICE {
+    CPU,
     CUDA,
-  };
-  class onnxmodle
-  {
-  private:
-      Ort::Env env;
-      const OrtApi& api=Ort::GetApi();
-      OrtTensorRTProviderOptionsV2* tensorrt_option;
-      Ort::SessionOptions session_options;
-      Ort::Session *session;
-      Ort::AllocatorWithDefaultOptions allocator;
-      size_t num_input_nodes;
-      std::vector<const char*> input_node_names;
-      std::vector<int64_t> input_node_dims;
-      std::vector<std::string> inputname_str{"x","input_lengths"};
-  public:
-      std::vector<void *> run(long long input_lengths,long long x_length,unsigned char * x);
-      std::vector<void *> run_en(long long input_lengths,long long x_length,unsigned char * x);
-      runreturn run_std(int64_t height,int64_t width,long long x_length,unsigned char * x);
-      onnxmodle(std::wstring modle_path,USE_DEVICE device=USE_DEVICE::TensorRT);
-      ~onnxmodle();
-  };
-}
+    TensorRT,
+};
+
+struct rec_return {
+    // [seq_len, num_classes]，行优先
+    std::vector<float> logits;
+    // 有效长度（模型 output_lengths）；为空表示与 seq_len 相同
+    std::vector<int64_t> lengths;
+    int64_t seq_len = 0;
+    int64_t num_classes = 0;
+    int64_t valid_len = 0;
+};
+
+struct det_return {
+    // [height, width]
+    std::vector<float> prob;
+    int64_t height = 0;
+    int64_t width = 0;
+};
+
+class onnxmodle {
+public:
+    explicit onnxmodle(const std::wstring& model_path, USE_DEVICE device = USE_DEVICE::CPU);
+    ~onnxmodle();
+
+    onnxmodle(const onnxmodle&) = delete;
+    onnxmodle& operator=(const onnxmodle&) = delete;
+
+    /// @brief 识别模型推理
+    /// @param image HWC 布局的 8bit 图像数据
+    /// @param height 图像高度（模型输入高度）
+    /// @param width 图像宽度
+    /// @param channels 1：灰度（x/255）；3：BGR（(x/255-0.5)/0.5，PaddleOCR 系模型）
+    rec_return run_rec(const uint8_t* image, int height, int width, int channels);
+
+    /// @brief 检测模型推理
+    /// @param chw 已归一化的 [3, height, width] float 数据
+    det_return run_det(float* chw, int height, int width);
+
+private:
+    std::vector<Ort::Value> run_model(std::vector<Ort::Value>& inputs) const;
+
+    Ort::Env env_;
+    Ort::SessionOptions session_options_;
+    std::unique_ptr<Ort::Session> session_;
+    std::vector<std::string> input_name_storage_;
+    std::vector<std::string> output_name_storage_;
+    std::vector<const char*> input_names_;
+    std::vector<const char*> output_names_;
+    std::vector<std::vector<int64_t>> input_shapes_;
+};
+
+}  // namespace cnocrmodle
+
+#endif  // CNOCR_MODELE_H
