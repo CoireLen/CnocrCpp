@@ -14,16 +14,23 @@
 class cnocr {
 public:
     enum USE_MODLE {
-        cnocr136fc,   // 中文识别模型
-        en_number,    // 英文数字识别模型
-        chinese_cht,  // 繁体中文识别模型
+        cnocr136fc,                 // 早期中文识别模型（cnocr 2.2，字典 label_cn.txt）
+        en_number,                  // 英文数字识别模型（PaddleOCR）
+        chinese_cht,                // 繁体中文识别模型（PaddleOCR）
+        densenet_lite_136_gru,      // 通用中文识别模型（cnocr 2.3）
+        scene_densenet_136_gru,     // 场景文字识别模型（cnocr 2.3）
+        doc_densenet_136_gru,       // 文档识别模型（cnocr 2.3）
+        number_densenet_136_fc,     // 数字识别模型（cnocr 2.3）
+        ch_ppocrv3,                 // 简体中英文识别模型（PaddleOCR PP-OCRv3）
+        ch_ppocr_mobile_v2,         // 简体中英文识别模型（PaddleOCR mobile v2.0）
     };
 
     /// @param device 推理设备；当前 onnxruntime 包为 CPU 版，CUDA/TensorRT 不可用时自动回退
     /// @param use_detection 是否先用 PP-OCRv3 检测模型切分文本行（关闭后使用投影切分）
+    /// @param auto_download 模型文件缺失时是否自动下载（缓存到 CNOCR_HOME 或平台默认目录）
     explicit cnocr(USE_MODLE mode = USE_MODLE::cnocr136fc,
                    cnocrmodle::USE_DEVICE device = cnocrmodle::USE_DEVICE::CPU,
-                   bool use_detection = true);
+                   bool use_detection = true, bool auto_download = true);
     ~cnocr();
 
     cnocr(const cnocr&) = delete;

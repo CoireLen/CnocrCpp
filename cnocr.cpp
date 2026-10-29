@@ -7,8 +7,33 @@
 #include <stdexcept>
 
 #include "image_io.h"
+#include "model_registry.h"
 
 namespace {
+
+const char* model_name_of(cnocr::USE_MODLE mode) {
+    switch (mode) {
+        case cnocr::USE_MODLE::cnocr136fc:
+            return "cnocr136fc";
+        case cnocr::USE_MODLE::en_number:
+            return "en_number_mobile_v2.0";
+        case cnocr::USE_MODLE::chinese_cht:
+            return "chinese_cht_PP-OCRv3";
+        case cnocr::USE_MODLE::densenet_lite_136_gru:
+            return "densenet_lite_136-gru";
+        case cnocr::USE_MODLE::scene_densenet_136_gru:
+            return "scene-densenet_lite_136-gru";
+        case cnocr::USE_MODLE::doc_densenet_136_gru:
+            return "doc-densenet_lite_136-gru";
+        case cnocr::USE_MODLE::number_densenet_136_fc:
+            return "number-densenet_lite_136-fc";
+        case cnocr::USE_MODLE::ch_ppocrv3:
+            return "ch_PP-OCRv3";
+        case cnocr::USE_MODLE::ch_ppocr_mobile_v2:
+            return "ch_ppocr_mobile_v2.0";
+    }
+    return nullptr;
+}
 
 std::vector<std::string> load_dict(const std::filesystem::path& path) {
     std::ifstream file(path, std::ios::binary);
@@ -41,11 +66,15 @@ cv::Mat prepare_line_image(const cv::Mat& img, int channels, int height) {
     if (channels == 1) {
         if (img.channels() == 1) {
             converted = img;
+        } else if (img.channels() == 4) {
+            cv::cvtColor(img, converted, cv::COLOR_BGRA2GRAY);
         } else {
             cv::cvtColor(img, converted, cv::COLOR_BGR2GRAY);
         }
     } else if (img.channels() == 3) {
         converted = img;
+    } else if (img.channels() == 4) {
+        cv::cvtColor(img, converted, cv::COLOR_BGRA2BGR);
     } else {
         cv::cvtColor(img, converted, cv::COLOR_GRAY2BGR);
     }
@@ -94,40 +123,29 @@ std::pair<std::string, float> decode_ctc(const cnocrmodle::rec_return& out,
 
 }  // namespace
 
-cnocr::cnocr(USE_MODLE mode, cnocrmodle::USE_DEVICE device, bool use_detection) {
-    std::filesystem::path model_path;
-    std::filesystem::path dict_path;
-    switch (mode) {
-        case USE_MODLE::cnocr136fc:
-            model_path = "modle/cnocr136fc.onnx";
-            dict_path = "dict/label_cn.txt";
-            input_channels_ = 1;
-            input_height_ = 32;
-            break;
-        case USE_MODLE::en_number:
-            model_path = "modle/en_number_mobile_v2.0_rec_infer.onnx";
-            dict_path = "dict/en_dict.txt";
-            input_channels_ = 3;
-            input_height_ = 32;
-            break;
-        case USE_MODLE::chinese_cht:
-            model_path = "modle/chinese_cht_PP-OCRv3_rec_infer.onnx";
-            dict_path = "dict/chinese_cht_dict.txt";
-            input_channels_ = 3;
-            input_height_ = 32;
-            break;
+cnocr::cnocr(USE_MODLE mode, cnocrmodle::USE_DEVICE device, bool use_detection,
+             bool auto_download) {
+    const char* name = model_name_of(mode);
+    const cnocr_models::ModelSpec* spec =
+        name == nullptr ? nullptr : cnocr_models::find_recognizer(name);
+    if (spec == nullptr) {
+        throw std::runtime_error("未注册的识别模型");
     }
 
-    modle = std::make_unique<cnocrmodle::onnxmodle>(model_path, device);
-    ctc_data = load_dict(dict_path);
+    modle = std::make_unique<cnocrmodle::onnxmodle>(
+        cnocr_models::ensure_model(*spec, auto_download), device);
+    ctc_data = load_dict(cnocr_models::dict_path(*spec));
     if (ctc_data.empty()) {
         throw std::runtime_error("字符集为空");
     }
+    input_channels_ = spec->channels;
+    input_height_ = spec->height;
     // cnocr 自训练模型把 blank 放在最后一类；PaddleOCR 系模型 blank 为第 0 类
-    blank_index_ = mode == USE_MODLE::cnocr136fc ? static_cast<int>(ctc_data.size()) : 0;
+    blank_index_ =
+        spec->blank_index < 0 ? static_cast<int>(ctc_data.size()) : spec->blank_index;
 
     if (use_detection) {
-        detector = std::make_unique<CnStd>(device);
+        detector = std::make_unique<CnStd>(device, auto_download);
     }
 }
 
@@ -136,7 +154,7 @@ cnocr::~cnocr() = default;
 std::vector<std::pair<std::string, float>> cnocr::ocr(const std::string& path) {
     const cv::Mat bgr = imageio::imread_utf8(std::filesystem::u8path(path));
     if (bgr.empty()) {
-        return {};
+        throw std::runtime_error("无法读取图片: " + path);
     }
     return ocr(bgr);
 }

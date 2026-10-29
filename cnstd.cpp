@@ -3,9 +3,11 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <stdexcept>
 
 #include "db_postprocess.h"
 #include "image_io.h"
+#include "model_registry.h"
 
 namespace {
 
@@ -63,9 +65,9 @@ void fill_normalized_chw(const cv::Mat& src, cv::Size target, std::vector<float>
 
 }  // namespace
 
-CnStd::CnStd(cnocrmodle::USE_DEVICE device)
+CnStd::CnStd(cnocrmodle::USE_DEVICE device, bool auto_download)
     : modle(std::make_unique<cnocrmodle::onnxmodle>(
-          std::filesystem::path("modle/ch_PP-OCRv3_det_infer.onnx"), device)) {}
+          cnocr_models::ensure_det_model(auto_download), device)) {}
 
 CnStd::~CnStd() = default;
 
@@ -92,6 +94,9 @@ std::vector<DetBox> CnStd::detect(const cv::Mat& bgr, cv::Size resized_shape,
 
 std::vector<DetBox> CnStd::detect(const std::string& path) {
     const cv::Mat bgr = imageio::imread_utf8(std::filesystem::u8path(path));
+    if (bgr.empty()) {
+        throw std::runtime_error("无法读取图片: " + path);
+    }
     return detect(bgr);
 }
 

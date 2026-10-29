@@ -11,7 +11,9 @@
 
 class CnStd {
 public:
-    explicit CnStd(cnocrmodle::USE_DEVICE device = cnocrmodle::USE_DEVICE::CPU);
+    /// @param auto_download 检测模型缺失时是否自动下载
+    explicit CnStd(cnocrmodle::USE_DEVICE device = cnocrmodle::USE_DEVICE::CPU,
+                   bool auto_download = true);
     ~CnStd();
 
     std::vector<DetBox> detect(const cv::Mat& bgr, cv::Size resized_shape = cv::Size(768, 768),
