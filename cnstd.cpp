@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 
 #include "db_postprocess.h"
+#include "image_io.h"
 
 namespace {
 
@@ -62,7 +64,8 @@ void fill_normalized_chw(const cv::Mat& src, cv::Size target, std::vector<float>
 }  // namespace
 
 CnStd::CnStd(cnocrmodle::USE_DEVICE device)
-    : modle(std::make_unique<cnocrmodle::onnxmodle>(L"modle/ch_PP-OCRv3_det_infer.onnx", device)) {}
+    : modle(std::make_unique<cnocrmodle::onnxmodle>(
+          std::filesystem::path("modle/ch_PP-OCRv3_det_infer.onnx"), device)) {}
 
 CnStd::~CnStd() = default;
 
@@ -88,7 +91,7 @@ std::vector<DetBox> CnStd::detect(const cv::Mat& bgr, cv::Size resized_shape,
 }
 
 std::vector<DetBox> CnStd::detect(const std::string& path) {
-    const cv::Mat bgr = cv::imread(path, cv::IMREAD_COLOR);
+    const cv::Mat bgr = imageio::imread_utf8(std::filesystem::u8path(path));
     return detect(bgr);
 }
 

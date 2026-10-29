@@ -2,14 +2,15 @@
 #include <iostream>
 #include <string>
 
+#ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
 #include <windows.h>
+#endif
 
 #include "cnocr.h"
 #include "cnstd.h"
-#include "text_utils.h"
 
 using namespace std::chrono;
 
@@ -22,7 +23,7 @@ void run_ocr(cnocr& ocr, const std::string& image_path) {
 
     int index = 0;
     for (const auto& line : lines) {
-        std::cout << index++ << ": " << textutils::wstring_to_utf8(line.first)
+        std::cout << index++ << ": " << line.first
                   << "  (置信度 " << line.second << ")" << std::endl;
     }
     std::cout << image_path << " 识别耗时: " << duration_cast<milliseconds>(end - start).count()
@@ -64,7 +65,9 @@ void run_cnstd() {
 }
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
+#endif
     const auto time_start = system_clock::now();
 
     if (argc > 1 && std::string(argv[1]) == "det") {

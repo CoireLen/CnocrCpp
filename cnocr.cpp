@@ -2,32 +2,33 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <stdexcept>
 
-#include "text_utils.h"
+#include "image_io.h"
 
 namespace {
 
-std::vector<std::wstring> load_dict(const std::wstring& path) {
+std::vector<std::string> load_dict(const std::filesystem::path& path) {
     std::ifstream file(path, std::ios::binary);
     if (!file) {
         throw std::runtime_error("字符集文件不存在或无法读取");
     }
-    std::vector<std::wstring> tokens;
+    std::vector<std::string> tokens;
     std::string line;
     while (std::getline(file, line)) {
         if (!line.empty() && line.back() == '\r') {
             line.pop_back();
         }
-        std::wstring token = textutils::utf8_to_wstring(line);
-        const size_t begin = token.find_first_not_of(L" \t");
-        const size_t end = token.find_last_not_of(L" \t");
-        const std::wstring trimmed =
-            begin == std::wstring::npos ? std::wstring() : token.substr(begin, end - begin + 1);
-        if (trimmed == L"<space>") {
-            token = L" ";
-        } else if (trimmed.rfind(L"<unused", 0) == 0) {
+        std::string token = line;
+        const size_t begin = token.find_first_not_of(" \t");
+        const size_t end = token.find_last_not_of(" \t");
+        const std::string trimmed =
+            begin == std::string::npos ? std::string() : token.substr(begin, end - begin + 1);
+        if (trimmed == "<space>") {
+            token = " ";
+        } else if (trimmed.rfind("<unused", 0) == 0) {
             token.clear();
         }
         tokens.push_back(std::move(token));
@@ -56,14 +57,14 @@ cv::Mat prepare_line_image(const cv::Mat& img, int channels, int height) {
     return resized;
 }
 
-std::pair<std::wstring, float> decode_ctc(const cnocrmodle::rec_return& out,
-                                          const std::vector<std::wstring>& dict,
-                                          int blank_index) {
+std::pair<std::string, float> decode_ctc(const cnocrmodle::rec_return& out,
+                                         const std::vector<std::string>& dict,
+                                         int blank_index) {
     const int seq_len = static_cast<int>(std::min(out.valid_len, out.seq_len));
     const int num_classes = static_cast<int>(out.num_classes);
     const int token_count = static_cast<int>(dict.size());
 
-    std::wstring text;
+    std::string text;
     float confidence = 1.f;
     int previous = -1;
     for (int t = 0; t < seq_len; ++t) {
@@ -94,24 +95,24 @@ std::pair<std::wstring, float> decode_ctc(const cnocrmodle::rec_return& out,
 }  // namespace
 
 cnocr::cnocr(USE_MODLE mode, cnocrmodle::USE_DEVICE device, bool use_detection) {
-    std::wstring model_path;
-    std::wstring dict_path;
+    std::filesystem::path model_path;
+    std::filesystem::path dict_path;
     switch (mode) {
         case USE_MODLE::cnocr136fc:
-            model_path = L"modle/cnocr136fc.onnx";
-            dict_path = L"dict/label_cn.txt";
+            model_path = "modle/cnocr136fc.onnx";
+            dict_path = "dict/label_cn.txt";
             input_channels_ = 1;
             input_height_ = 32;
             break;
         case USE_MODLE::en_number:
-            model_path = L"modle/en_number_mobile_v2.0_rec_infer.onnx";
-            dict_path = L"dict/en_dict.txt";
+            model_path = "modle/en_number_mobile_v2.0_rec_infer.onnx";
+            dict_path = "dict/en_dict.txt";
             input_channels_ = 3;
             input_height_ = 32;
             break;
         case USE_MODLE::chinese_cht:
-            model_path = L"modle/chinese_cht_PP-OCRv3_rec_infer.onnx";
-            dict_path = L"dict/chinese_cht_dict.txt";
+            model_path = "modle/chinese_cht_PP-OCRv3_rec_infer.onnx";
+            dict_path = "dict/chinese_cht_dict.txt";
             input_channels_ = 3;
             input_height_ = 32;
             break;
@@ -132,15 +133,15 @@ cnocr::cnocr(USE_MODLE mode, cnocrmodle::USE_DEVICE device, bool use_detection) 
 
 cnocr::~cnocr() = default;
 
-std::vector<std::pair<std::wstring, float>> cnocr::ocr(const std::string& path) {
-    cv::Mat bgr = cv::imread(path, cv::IMREAD_COLOR);
+std::vector<std::pair<std::string, float>> cnocr::ocr(const std::string& path) {
+    const cv::Mat bgr = imageio::imread_utf8(std::filesystem::u8path(path));
     if (bgr.empty()) {
         return {};
     }
     return ocr(bgr);
 }
 
-std::vector<std::pair<std::wstring, float>> cnocr::ocr(const cv::Mat& bgr) {
+std::vector<std::pair<std::string, float>> cnocr::ocr(const cv::Mat& bgr) {
     if (bgr.empty() || std::min(bgr.rows, bgr.cols) < 2) {
         return {};
     }
@@ -171,9 +172,9 @@ std::vector<std::pair<std::wstring, float>> cnocr::ocr(const cv::Mat& bgr) {
     return ocr_for_single_lines(lines);
 }
 
-std::vector<std::pair<std::wstring, float>> cnocr::ocr_for_single_lines(
+std::vector<std::pair<std::string, float>> cnocr::ocr_for_single_lines(
     const std::vector<cv::Mat>& line_imgs) {
-    std::vector<std::pair<std::wstring, float>> result;
+    std::vector<std::pair<std::string, float>> result;
     result.reserve(line_imgs.size());
     for (const cv::Mat& img : line_imgs) {
         result.push_back(recognize_line(img));
@@ -181,9 +182,9 @@ std::vector<std::pair<std::wstring, float>> cnocr::ocr_for_single_lines(
     return result;
 }
 
-std::pair<std::wstring, float> cnocr::recognize_line(const cv::Mat& img) {
+std::pair<std::string, float> cnocr::recognize_line(const cv::Mat& img) {
     if (img.empty() || std::min(img.rows, img.cols) < 2) {
-        return {std::wstring(), 0.f};
+        return {std::string(), 0.f};
     }
 
     const cv::Mat resized = prepare_line_image(img, input_channels_, input_height_);

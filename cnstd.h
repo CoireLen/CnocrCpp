@@ -17,6 +17,7 @@ public:
     std::vector<DetBox> detect(const cv::Mat& bgr, cv::Size resized_shape = cv::Size(768, 768),
                                bool preserve_aspect_ratio = true, float box_score_thresh = 0.3f,
                                int min_box_size = 4);
+    /// @param path 图片路径，按 UTF-8 解释
     std::vector<DetBox> detect(const std::string& path);
 
     /// @brief 按四点透视变换裁剪文本框，必要时旋转为水平

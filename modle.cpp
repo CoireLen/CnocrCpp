@@ -1,7 +1,6 @@
 #include "modle.h"
 
 #include <algorithm>
-#include <fstream>
 #include <iostream>
 #include <stdexcept>
 
@@ -54,13 +53,10 @@ void copy_tensor_data(const Ort::Value& tensor, std::vector<T>& target, size_t c
 
 }  // namespace
 
-onnxmodle::onnxmodle(const std::wstring& model_path, USE_DEVICE device)
+onnxmodle::onnxmodle(const std::filesystem::path& model_path, USE_DEVICE device)
     : env_(ORT_LOGGING_LEVEL_WARNING, "cnocr") {
-    {
-        std::ifstream probe(model_path, std::ios::binary);
-        if (!probe.good()) {
-            throw std::runtime_error("模型文件不存在或无法读取");
-        }
+    if (!std::filesystem::is_regular_file(model_path)) {
+        throw std::runtime_error("模型文件不存在或无法读取");
     }
 
     session_options_.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);

@@ -8,27 +8,37 @@
 
 | 依赖 | 说明 |
 | --- | --- |
-| onnxruntime | 1.31.1，默认路径 `E:/Lib/onnxruntime-win-x64-1.31.1`（需包含 `include/` 与 `lib/`） |
-| OpenCV | 通过 vcpkg 安装，默认 vcpkg 根目录 `E:/Lib/vcpkg` |
+| onnxruntime | 1.31.1，下载对应平台包（Windows / Linux / macOS），需包含 `include/` 与 `lib/`；Windows 默认路径 `E:/Lib/onnxruntime-win-x64-1.31.1` |
+| OpenCV | Windows 用 vcpkg（默认根目录 `E:/Lib/vcpkg`）；Linux 用 `libopencv-dev` 或 vcpkg；macOS 用 `brew install opencv` |
 | CMake | ≥ 3.21 |
-| 编译器 | Visual Studio 2022/2026（MSVC），C++17 |
+| 编译器 | MSVC 2022/2026、GCC ≥ 9、Clang / AppleClang ≥ 11，C++17 |
 
-路径都可以在配置时通过缓存变量覆盖：
+`ONNXRUNTIME_ROOT` 与 `VCPKG_ROOT_DIR` 都可以在配置时覆盖，macOS 还需通过 `CMAKE_PREFIX_PATH` 指向 Homebrew 的 OpenCV。
 
 ```sh
-# 生成器按本机安装的 VS 版本选择，例如 "Visual Studio 17 2022"
+# Windows
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64 \
-  -DONNXRUNTIME_ROOT=<onnxruntime解压目录> \
-  -DVCPKG_ROOT_DIR=<vcpkg目录>
+  -DONNXRUNTIME_ROOT=E:/Lib/onnxruntime-win-x64-1.31.1
 cmake --build build --config Release
+
+# Linux（OpenCV 用系统包时无需额外参数）
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+  -DONNXRUNTIME_ROOT=$HOME/onnxruntime-linux-x64-1.31.1
+cmake --build build -j
+
+# macOS
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH="$(brew --prefix opencv)" \
+  -DONNXRUNTIME_ROOT=$HOME/onnxruntime-osx-arm64-1.31.1
+cmake --build build -j
 ```
 
 构建后会自动完成两件事：
 
-1. 把 `onnxruntime.dll`、`onnxruntime_providers_shared.dll` 以及 OpenCV 的 DLL 部署到输出目录；
-2. 把 `modle/*.onnx`、`dict/*.txt` 和示例图片复制到 `UseAiForWinML.exe` 旁边，程序按相对路径读取。
+1. 把 onnxruntime 运行库部署到输出目录：Windows 拷 `onnxruntime.dll` / `onnxruntime_providers_shared.dll`，Linux/macOS 拷 `libonnxruntime.*` 并设置 `$ORIGIN` / `@loader_path` RPATH；OpenCV 的 DLL 由 vcpkg applocal 自动部署；
+2. 把 `modle/*.onnx`、`dict/*.txt` 和示例图片复制到可执行文件旁边，程序按相对路径读取。
 
-> CUDA / TensorRT 需要 onnxruntime 包内带有对应的 provider DLL；当前 1.31.1 CPU 包缺少它们，代码会自动回退到 CPU，不会崩溃。
+> CUDA / TensorRT 需要 onnxruntime 包内带有对应的 provider 运行库；当前 1.31.1 CPU 包缺少它们，代码会自动回退到 CPU，不会崩溃。macOS 官方包不含 CUDA/TensorRT，默认使用 CPU。
 
 ## 模型与字典
 
@@ -50,7 +60,8 @@ int main() {
     // 默认使用 PP-OCRv3 检测模型切分文本行；device 可用 CPU / CUDA / TensorRT
     cnocr ocr(cnocr::USE_MODLE::cnocr136fc, cnocrmodle::USE_DEVICE::CPU);
     for (const auto& line : ocr.ocr("cnocr.png")) {
-        std::wcout << line.first << L"  (置信度 " << line.second << L")" << std::endl;
+        // line.first 为 UTF-8 文本，可直接输出或参与后续处理
+        std::cout << line.first << "  (置信度 " << line.second << ")" << std::endl;
     }
 
     // 关闭检测，退回按行投影切分
@@ -67,8 +78,8 @@ int main() {
 示例程序支持两种运行方式：
 
 ```sh
-UseAiForWinML.exe        # 依次运行中文、英文、繁体三个识别模型
-UseAiForWinML.exe det    # 只运行检测模型并打印文本框
+UseAiForWinML        # 依次运行中文、英文、繁体三个识别模型
+UseAiForWinML det    # 只运行检测模型并打印文本框
 ```
 
 中文模型实际输出（`cnocr.png`，CPU）：
@@ -88,7 +99,8 @@ UseAiForWinML.exe det    # 只运行检测模型并打印文本框
 
 ## 实现说明
 
-- **模块划分**：`modle.*` 负责 onnxruntime 会话与张量输入输出，`cnstd.*` 负责 DBNet 预处理与裁剪，`db_postprocess.*` 负责概率图后处理，`text_utils.*` 负责 UTF-8/宽字符转换，`cnocr.*` 负责模型配置、文本行准备与 CTC 解码。
+- **模块划分**：`modle.*` 负责 onnxruntime 会话与张量输入输出，`cnstd.*` 负责 DBNet 预处理与裁剪，`db_postprocess.*` 负责概率图后处理，`image_io.*` 负责按 UTF-8 路径读图，`cnocr.*` 负责模型配置、文本行准备与 CTC 解码。
+- **文本编码**：字典、识别结果与图片路径全链路使用 UTF-8；`cnocr` 返回 `std::string`，Windows 控制台仅在示例程序中切换为 UTF-8 代码页。
 - **检测**（`cnstd.cpp` + `db_postprocess.cpp`）：按 cnstd 的逻辑，把长边缩放到 768 且宽高取 32 的倍数，做 ImageNet 归一化后送入 DBNet；概率图 0.3 二值化、轮廓最小外接矩形、框内均值打分（阈值 0.3）、unclip 1.5 倍、还原坐标并按“从上到下、从左到右”排序；最后用透视变换裁剪，高宽比 ≥ 1.5 时旋转 90°。
 - **识别**（`cnocr.cpp`）：文本行高度固定 32、宽度按比例（最小 8）；`cnocr136fc` 使用灰度 `x/255`，英文与繁体模型使用 3 通道 `(x/255-0.5)/0.5`。
 - **CTC 解码**：按模型输出的有效长度解码，连续帧去重并跳过 blank；置信度取各时刻最大 softmax 概率的最小值。
@@ -96,13 +108,20 @@ UseAiForWinML.exe det    # 只运行检测模型并打印文本框
 
 ## 更新记录
 
+### 20261029
+
+- 文本接口改为 UTF-8 `std::string`：字典、识别结果不再经过 `wchar_t` 转换，移除原文本转换模块。
+- 模型与字典路径改用 `std::filesystem::path`，适配 onnxruntime 的 `ORTCHAR_T`（Windows 宽字符 / POSIX 窄字符）；新增 `image_io`，图片路径同样按 UTF-8 解释。
+- `main.cpp` 中 Windows 专用 API 用 `_WIN32` 隔离，可在 Linux / macOS 编译。
+- CMake 跨平台：仅 Windows 启用 DLL 导出与 `/utf-8`，onnxruntime 改用 `find_path` / `find_library` 查找，非 Windows 拷贝 `so`/`dylib` 并设置 RPATH。
+
 ### 20261028
 
 - 支持 `ch_PP-OCRv3_det_infer.onnx` 文本检测，识别流程改为“先检测后识别”。
 - 重写推理封装：修复输出指针悬垂、输出节点名读取错误、3 通道输入取址错误，新增 CPU 设备与 provider 自动回退。
 - 修复 CTC blank 索引与置信度计算，修复字典加载的 CRLF / 末尾重复项问题。
 - 主程序改为相对路径，新增 `det` 模式，输出统一为 UTF-8。
-- 拆分模块（`det_box.h`、`text_utils.*`、`db_postprocess.*`），复用文本行预处理与 CTC 解码，推理封装改为按模型输入顺序组装张量。
+- 拆分模块（`det_box.h`、`db_postprocess.*`），复用文本行预处理与 CTC 解码，推理封装改为按模型输入顺序组装张量。
 
 ### 20240909
 

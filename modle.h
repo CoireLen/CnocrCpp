@@ -3,6 +3,7 @@
 
 #include <onnxruntime_cxx_api.h>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
@@ -34,7 +35,8 @@ struct det_return {
 
 class onnxmodle {
 public:
-    explicit onnxmodle(const std::wstring& model_path, USE_DEVICE device = USE_DEVICE::CPU);
+    explicit onnxmodle(const std::filesystem::path& model_path,
+                       USE_DEVICE device = USE_DEVICE::CPU);
     ~onnxmodle();
 
     onnxmodle(const onnxmodle&) = delete;
